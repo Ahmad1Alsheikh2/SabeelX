@@ -33,7 +33,7 @@ SabeelX is a modern web platform that connects mentees with experienced mentors 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/sabeelx.git
+git clone https://github.com/hamaadwmehal/sabeelx.git
 cd sabeelx
 ```
 
