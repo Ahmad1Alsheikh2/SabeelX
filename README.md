@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SabeelX - Mentorship Platform
+
+SabeelX is a modern web platform that connects mentees with experienced mentors across various fields. The platform facilitates meaningful mentorship relationships by providing a seamless way to find, connect with, and learn from industry experts.
+
+## Features
+
+- 🔍 Browse and filter mentors by expertise, price range, and availability
+- 👤 Detailed mentor profiles with experience, education, and reviews
+- 📅 Flexible session scheduling
+- 💬 Direct messaging with mentors
+- ⭐ Review and rating system
+- 🔒 Secure authentication with Google
+- 💰 Simple payment processing
+
+## Tech Stack
+
+- Next.js 14 with App Router
+- TypeScript
+- Tailwind CSS
+- Prisma (Database ORM)
+- NextAuth.js (Authentication)
+- PostgreSQL (Database)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ and npm
+- PostgreSQL database
+- Google OAuth credentials
+
+### Environment Setup
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/yourusername/sabeelx.git
+cd sabeelx
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Create a `.env` file in the root directory with the following variables:
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/sabeelx"
+GOOGLE_CLIENT_ID="your_google_client_id"
+GOOGLE_CLIENT_SECRET="your_google_client_secret"
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your_nextauth_secret"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Set up the database:
+```bash
+npx prisma migrate dev
+```
 
-## Learn More
+5. Start the development server:
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+The application will be available at `http://localhost:3000`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+sabeelx/
+├── src/
+│   ├── app/                 # Next.js app router pages
+│   ├── components/          # Reusable React components
+│   ├── lib/                 # Utility functions and configurations
+│   └── types/              # TypeScript type definitions
+├── prisma/                  # Database schema and migrations
+├── public/                  # Static assets
+└── package.json            # Project dependencies and scripts
+```
 
-## Deploy on Vercel
+## Contributing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For support, email support@sabeelx.com or join our Slack community.
