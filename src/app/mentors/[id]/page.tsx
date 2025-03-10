@@ -1,44 +1,64 @@
 import Image from 'next/image'
 
 // This would typically come from your database based on the ID
-const mentor = {
-  id: 1,
-  name: 'Sarah Johnson',
-  title: 'Senior Software Engineer',
-  company: 'Google',
-  expertise: ['React', 'Node.js', 'System Design'],
-  rating: 4.9,
-  reviews: 24,
-  hourlyRate: 150,
-  image: 'https://randomuser.me/api/portraits/women/1.jpg',
-  bio: 'I am a senior software engineer with over 8 years of experience in full-stack development. I specialize in React, Node.js, and system design. I love helping others grow in their technical careers and sharing my experience in building scalable applications.',
-  experience: [
-    {
-      company: 'Google',
-      title: 'Senior Software Engineer',
-      duration: '2020 - Present',
-    },
-    {
-      company: 'Facebook',
-      title: 'Software Engineer',
-      duration: '2017 - 2020',
-    },
-  ],
-  education: [
-    {
-      school: 'Stanford University',
-      degree: 'M.S. Computer Science',
-      year: '2017',
-    },
-    {
-      school: 'University of California, Berkeley',
-      degree: 'B.S. Computer Science',
-      year: '2015',
-    },
-  ],
+const mentors = {
+  1: {
+    id: 1,
+    name: 'Hamaad Mehal',
+    title: 'Co-Founder',
+    company: 'SabeelX',
+    country: 'USA',
+    expertise: ['Healthcare', 'Policy', 'Biology', 'Chemistry', 'Physics', 'Test Prep', 'English'],
+    verified: true,
+    image: '/founders/hamaad.jpg',
+    bio: 'Co-Founder of SabeelX, dedicated to making knowledge accessible to all. Experienced in mentoring students across various disciplines including healthcare, sciences, and test preparation.',
+    experience: [
+      {
+        company: 'SabeelX',
+        title: 'Co-Founder',
+        duration: '2024 - Present',
+      }
+    ],
+    education: [
+      {
+        school: 'Harvard College',
+        degree: 'B.A. in Social Studies and Chemistry',
+        year: '2024',
+      }
+    ],
+  },
+  2: {
+    id: 2,
+    name: 'Ahmad Alsheikh',
+    title: 'Co-Founder',
+    company: 'SabeelX',
+    country: 'USA',
+    expertise: ['Healthcare', 'Policy', 'Biology', 'Chemistry', 'Physics', 'Test Prep', 'English'],
+    verified: true,
+    image: '/founders/ahmad.jpg',
+    bio: 'Co-Founder of SabeelX, dedicated to making knowledge accessible to all. Experienced in mentoring students across various disciplines including healthcare, sciences, and test preparation.',
+    experience: [
+      {
+        company: 'SabeelX',
+        title: 'Co-Founder',
+        duration: '2024 - Present',
+      }
+    ],
+    education: [
+      {
+        school: 'Harvard College',
+        degree: 'B.A. in Government and Chemistry',
+        year: '2024',
+      }
+    ],
+  }
 }
 
 export default function MentorProfile({ params }: { params: { id: string } }) {
+  const mentor = mentors[parseInt(params.id) as keyof typeof mentors]
+  if (!mentor) {
+    return <div>Mentor not found</div>
+  }
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="lg:grid lg:grid-cols-12 lg:gap-8">
@@ -55,16 +75,20 @@ export default function MentorProfile({ params }: { params: { id: string } }) {
                   className="object-cover"
                 />
               </div>
-              <div className="ml-6">
-                <h1 className="text-2xl font-bold text-gray-900">{mentor.name}</h1>
+              <div className="ml-6 flex-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-gray-900">{mentor.name}</h1>
+                    {mentor.verified && (
+                      <svg className="h-6 w-6 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-2xl">🇺🇸</span>
+                </div>
                 <p className="text-lg text-gray-600">{mentor.title}</p>
                 <p className="text-lg text-gray-600">{mentor.company}</p>
-                <div className="mt-2 flex items-center">
-                  <span className="text-yellow-400">★</span>
-                  <span className="ml-1 text-sm text-gray-600">
-                    {mentor.rating} ({mentor.reviews} reviews)
-                  </span>
-                </div>
               </div>
             </div>
 
@@ -76,7 +100,7 @@ export default function MentorProfile({ params }: { params: { id: string } }) {
 
             {/* Expertise */}
             <div className="mt-6">
-              <h2 className="text-lg font-semibold text-gray-900">Expertise</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Focus Areas</h2>
               <div className="mt-2 flex flex-wrap gap-2">
                 {mentor.expertise.map((skill) => (
                   <span
@@ -127,7 +151,6 @@ export default function MentorProfile({ params }: { params: { id: string } }) {
         <div className="lg:col-span-4 mt-8 lg:mt-0">
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 sticky top-8">
             <h2 className="text-lg font-semibold text-gray-900">Request Mentorship</h2>
-            <p className="mt-2 text-gray-600">${mentor.hourlyRate}/hour</p>
 
             <form className="mt-6 space-y-4">
               <div>
