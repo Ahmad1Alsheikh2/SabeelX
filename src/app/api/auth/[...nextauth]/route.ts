@@ -5,7 +5,19 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import prisma from '@/lib/prisma'
 import { compare } from 'bcryptjs'
 
-const handler = NextAuth({
+// Define session types
+declare module 'next-auth' {
+  interface Session {
+    user: {
+      id: string
+      email?: string | null
+      name?: string | null
+      image?: string | null
+    }
+  }
+}
+
+export const authOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
@@ -20,7 +32,7 @@ const handler = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error('Invalid credentials')
+          throw new Error('Incorrect email or password')
         }
 
         const user = await prisma.user.findUnique({
@@ -28,13 +40,13 @@ const handler = NextAuth({
         })
 
         if (!user || !user.password) {
-          throw new Error('Invalid credentials')
+          throw new Error('Email address not found')
         }
 
         const isPasswordValid = await compare(credentials.password, user.password)
 
         if (!isPasswordValid) {
-          throw new Error('Invalid credentials')
+          throw new Error('Incorrect password')
         }
 
         return {
@@ -59,6 +71,8 @@ const handler = NextAuth({
       return session
     },
   },
-})
+}
+
+const handler = NextAuth(authOptions)
 
 export { handler as GET, handler as POST }
