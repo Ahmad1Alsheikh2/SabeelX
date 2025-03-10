@@ -13,6 +13,15 @@ export async function POST(req: Request) {
             )
         }
 
+        // Validate password requirements
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+        if (!passwordRegex.test(password)) {
+            return NextResponse.json(
+                { message: 'Password does not meet security requirements' },
+                { status: 400 }
+            )
+        }
+
         // Check if user already exists
         try {
             const existingUser = await prisma.user.findUnique({

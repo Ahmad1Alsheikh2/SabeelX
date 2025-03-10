@@ -16,9 +16,23 @@ export default function SignUp() {
   })
   const [error, setError] = useState('')
 
+  const validatePassword = (password: string) => {
+    const minLength = password.length >= 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+
+    return minLength && hasUpperCase && hasLowerCase && hasNumbers;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (!validatePassword(formData.password)) {
+      setError('Password does not meet the requirements')
+      return
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match')
@@ -50,7 +64,7 @@ export default function SignUp() {
         if (result?.error) {
           setError(result.error)
         } else {
-          router.push('/dashboard') // Redirect to dashboard after successful sign-in
+          router.push('/profile/setup') // Redirect to profile setup instead of dashboard
         }
       } else {
         const data = await response.json()
@@ -143,6 +157,15 @@ export default function SignUp() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
+              </div>
+              <div className="mt-2">
+                <p className="text-sm text-gray-500">Password must:</p>
+                <ul className="text-xs text-gray-500 list-disc list-inside">
+                  <li>Be at least 8 characters long</li>
+                  <li>Include at least one uppercase letter</li>
+                  <li>Include at least one lowercase letter</li>
+                  <li>Include at least one number</li>
+                </ul>
               </div>
             </div>
 
