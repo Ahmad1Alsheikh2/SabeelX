@@ -90,7 +90,7 @@ export default function Home() {
               Find Your Perfect Mentor
             </h1>
             <p className="mt-6 text-xl leading-8">
-              Connect with experienced professionals who can guide you through your career journey.
+              Connect with experienced professionals who can guide you through your educational and career journey.
               Get personalized mentorship to achieve your goals faster.
             </p>
             <div className="mt-10 flex items-center gap-x-6">
