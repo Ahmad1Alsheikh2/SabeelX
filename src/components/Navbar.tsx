@@ -2,12 +2,26 @@
 
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function Navbar() {
   const { data: session } = useSession()
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const router = useRouter()
 
-  const handleSignOut = () => {
-    signOut({ callbackUrl: '/' })
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true)
+      // Start the sign out process but don't wait for redirect
+      await signOut({ redirect: false })
+      // Use client-side navigation for a smoother transition
+      router.push('/')
+    } catch (error) {
+      console.error('Error signing out:', error)
+    } finally {
+      setIsSigningOut(false)
+    }
   }
 
   return (
@@ -46,9 +60,10 @@ export default function Navbar() {
                 </Link>
                 <button
                   onClick={handleSignOut}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                  disabled={isSigningOut}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Sign Out
+                  {isSigningOut ? 'Signing out...' : 'Sign Out'}
                 </button>
               </>
             ) : (

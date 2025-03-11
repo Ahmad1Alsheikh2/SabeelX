@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
 import prisma from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export async function POST(req: Request) {
     try {
         const { email, password, firstName, lastName } = await req.json()
+
+        console.log('Received signup request for:', { email, firstName, lastName })
 
         if (!email || !password || !firstName || !lastName) {
             return NextResponse.json(
@@ -35,7 +38,11 @@ export async function POST(req: Request) {
                 )
             }
         } catch (dbError: any) {
-            console.error('Database connection error:', dbError)
+            console.error('Database connection error:', {
+                error: dbError.message,
+                stack: dbError.stack,
+                cause: dbError.cause
+            })
             if (dbError.message.includes('DATABASE_URL')) {
                 return NextResponse.json(
                     { message: 'Database connection not configured. Please contact support.' },
@@ -48,22 +55,40 @@ export async function POST(req: Request) {
         // Hash the password
         const hashedPassword = await hash(password, 12)
 
-        // Create user
+        console.log('Creating new user with data:', {
+            email,
+            firstName,
+            lastName,
+            role: 'USER'
+        })
+
+        // Create user with isProfileComplete set to false
         const user = await prisma.user.create({
             data: {
                 email,
                 password: hashedPassword,
                 firstName,
                 lastName,
-            },
+                role: 'USER',
+                isProfileComplete: false,
+                skills: [],
+            } as Prisma.UserCreateInput,
         })
+
+        console.log('User created successfully:', { userId: user.id })
 
         return NextResponse.json(
             { message: 'User created successfully', userId: user.id },
             { status: 201 }
         )
     } catch (error: any) {
-        console.error('Registration error:', error)
+        console.error('Registration error details:', {
+            error: error.message,
+            stack: error.stack,
+            cause: error.cause,
+            code: error.code,
+            meta: error.meta
+        })
         return NextResponse.json(
             {
                 message: 'Error creating user',
@@ -72,4 +97,4 @@ export async function POST(req: Request) {
             { status: 500 }
         )
     }
-} 
+}

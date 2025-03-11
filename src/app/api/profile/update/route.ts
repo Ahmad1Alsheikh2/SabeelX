@@ -25,47 +25,32 @@ export async function POST(req: Request) {
             isProfileComplete
         } = await req.json()
 
-        // Validate required fields
-        if (!bio || !title || !company || !hourlyRate || !availability) {
+        // Validate bio field (required for all users)
+        if (!bio) {
             return NextResponse.json(
-                { message: 'Please fill in all fields' },
+                { message: 'Bio is required' },
                 { status: 400 }
             )
         }
 
-        // Validate hourly rate
-        if (isNaN(hourlyRate) || hourlyRate < 0) {
-            return NextResponse.json(
-                { message: 'Please enter a valid hourly rate' },
-                { status: 400 }
-            )
-        }
-
-        // Validate availability
-        if (isNaN(availability) || availability < 0 || availability > 168) {
-            return NextResponse.json(
-                { message: 'Please enter a valid weekly availability (0-168 hours)' },
-                { status: 400 }
-            )
-        }
-
-        const user = await prisma.user.update({
+        // Update user
+        const updatedUser = await prisma.user.update({
             where: {
                 email: session.user.email,
             },
             data: {
                 bio,
-                skills: Array.isArray(skills) ? skills : skills.split(',').map((s: string) => s.trim()),
-                hourlyRate: parseFloat(hourlyRate),
+                skills: Array.isArray(skills) ? skills : skills?.split(',').map((s: string) => s.trim()),
+                hourlyRate: hourlyRate ? parseFloat(hourlyRate) : undefined,
                 title,
                 company,
-                availability: parseInt(availability),
+                availability: availability ? parseInt(availability) : undefined,
                 image,
                 isProfileComplete: true,
             },
         })
 
-        return NextResponse.json(user)
+        return NextResponse.json(updatedUser)
     } catch (error: any) {
         console.error('Profile update error:', error)
         return NextResponse.json(

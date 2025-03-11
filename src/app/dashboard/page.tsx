@@ -2,15 +2,26 @@
 
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 
 export default function Dashboard() {
     const { data: session, status } = useSession()
     const router = useRouter()
+    const [isSigningOut, setIsSigningOut] = useState(false)
 
-    const handleSignOut = () => {
-        signOut({ callbackUrl: '/' })
+    const handleSignOut = async () => {
+        try {
+            setIsSigningOut(true)
+            // Start the sign out process but don't wait for redirect
+            await signOut({ redirect: false })
+            // Use client-side navigation for a smoother transition
+            router.push('/')
+        } catch (error) {
+            console.error('Error signing out:', error)
+        } finally {
+            setIsSigningOut(false)
+        }
     }
 
     useEffect(() => {
@@ -116,9 +127,10 @@ export default function Dashboard() {
                             </button>
                             <button
                                 onClick={handleSignOut}
-                                className="w-full flex justify-center items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50"
+                                disabled={isSigningOut}
+                                className="w-full flex justify-center items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Sign Out
+                                {isSigningOut ? 'Signing out...' : 'Sign Out'}
                             </button>
                         </div>
                     </div>

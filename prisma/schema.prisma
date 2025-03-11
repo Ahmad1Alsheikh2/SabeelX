@@ -25,6 +25,9 @@ model User {
   image         String?
   bio           String?   @db.Text
   skills        String[]
+  expertise     String[]
+  country       String?
+  experience    Int?
   hourlyRate    Float?
   title         String?
   company       String?
