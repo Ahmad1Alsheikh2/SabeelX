@@ -1,6 +1,6 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import Image from 'next/image'
@@ -8,6 +8,10 @@ import Image from 'next/image'
 export default function Dashboard() {
     const { data: session, status } = useSession()
     const router = useRouter()
+
+    const handleSignOut = () => {
+        signOut({ callbackUrl: '/' })
+    }
 
     useEffect(() => {
         if (status === 'unauthenticated') {
@@ -55,22 +59,22 @@ export default function Dashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Stats */}
+                    {/* Payment Details */}
                     <div className="bg-white shadow rounded-lg p-6">
-                        <h2 className="text-lg font-medium text-gray-900 mb-4">Your Stats</h2>
+                        <h2 className="text-lg font-medium text-gray-900 mb-4">Payment Details</h2>
                         <div className="space-y-4">
-                            <div>
-                                <p className="text-sm text-gray-500">Total Sessions</p>
-                                <p className="text-2xl font-semibold text-gray-900">0</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-500">Hours Mentored</p>
-                                <p className="text-2xl font-semibold text-gray-900">0</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-500">Average Rating</p>
-                                <p className="text-2xl font-semibold text-gray-900">N/A</p>
-                            </div>
+                            <button
+                                onClick={() => router.push('/payment/methods')}
+                                className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                            >
+                                Manage Payment Methods
+                            </button>
+                            <button
+                                onClick={() => router.push('/payment/history')}
+                                className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                            >
+                                View Payment History
+                            </button>
                         </div>
                     </div>
 
@@ -109,6 +113,12 @@ export default function Dashboard() {
                                 className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                             >
                                 Settings
+                            </button>
+                            <button
+                                onClick={handleSignOut}
+                                className="w-full flex justify-center items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50"
+                            >
+                                Sign Out
                             </button>
                         </div>
                     </div>
