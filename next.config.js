@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Configuration options here
-}
+  images: {
+    domains: ['randomuser.me'],
+    unoptimized: true
+  },
+};
 
-module.exports = nextConfig
+module.exports = nextConfig; 

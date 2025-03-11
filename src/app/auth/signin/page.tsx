@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import Image from 'next/image'
 
 export default function SignIn() {
   const router = useRouter()
@@ -50,9 +50,9 @@ export default function SignIn() {
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           Or{' '}
-          <Link href="/auth/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
+          <a href="/auth/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
             create a new account
-          </Link>
+          </a>
         </p>
       </div>
 
