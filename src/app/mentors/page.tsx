@@ -93,6 +93,19 @@ export default function MentorsPage() {
     setSelectedCountry('')
   }
 
+  const hasExpertiseInCategory = (mentor: typeof mentors[0], category: CategoryType): boolean => {
+    const categoryFocusAreas = subCategories[category] || []
+    return mentor.expertise.some(expertise => categoryFocusAreas.includes(expertise as SubCategoryType))
+  }
+
+  const filteredMentors = mentors.filter(mentor => {
+    if (!selectedCategory) return true
+    if (!hasExpertiseInCategory(mentor, selectedCategory)) return false
+    if (selectedFocusArea && !mentor.expertise.includes(selectedFocusArea)) return false
+    if (selectedCountry && mentor.country !== selectedCountry) return false
+    return true
+  })
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="md:flex md:items-center md:justify-between">
@@ -199,98 +212,79 @@ export default function MentorsPage() {
           </div>
         </div>
 
-        {/* Mentors Grid */}
-        {mentors.length === 0 ? (
-          <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-12">
-            <h3 className="text-lg font-medium text-gray-900">No mentors available</h3>
-            <p className="mt-2 text-sm text-gray-500">Check back later or adjust your filters.</p>
-          </div>
-        ) : (
-          mentors.map((mentor) => (
-            <div
-              key={mentor.id}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
-            >
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="h-16 w-16 relative rounded-full overflow-hidden">
-                    {mentor.image ? (
-                      <Image
-                        src={mentor.image}
-                        alt={mentor.name}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="h-full w-full bg-gray-200 flex items-center justify-center">
-                        <span className="text-2xl text-gray-500">
-                          {mentor.name.charAt(0)}
-                        </span>
+        {/* Mentors Grid or No Mentors Message */}
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+          {filteredMentors.length > 0 ? (
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+              {filteredMentors.map((mentor) => (
+                <div
+                  key={mentor.id}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
+                >
+                  <div className="p-6">
+                    <div className="flex items-center">
+                      <div className="h-16 w-16 relative rounded-full overflow-hidden">
+                        <Image
+                          src={mentor.image}
+                          alt={mentor.name}
+                          fill
+                          className="object-cover"
+                        />
                       </div>
-                    )}
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                      {mentor.name}
-                      {mentor.verified && (
-                        <svg
-                          className="ml-2 h-5 w-5 text-blue-500"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
+                      <div className="ml-4">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-semibold text-gray-900">{mentor.name}</h3>
+                          {mentor.verified && (
+                            <svg className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500">{mentor.title}</p>
+                        <p className="text-sm text-gray-500">{mentor.company}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {mentor.expertise.map((skill) => (
+                          <span
+                            key={skill}
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="mt-2 flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                         </svg>
-                      )}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {mentor.title} at {mentor.company}
-                    </p>
-                  </div>
-                </div>
+                        <span className="text-sm text-gray-500">{mentor.country}</span>
+                      </div>
+                    </div>
 
-                <div className="mt-4">
-                  <div className="flex flex-wrap gap-2">
-                    {mentor.expertise.map((skill) => (
-                      <span
-                        key={skill}
-                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                    <div className="mt-6">
+                      <Link
+                        href={`/mentors/${mentor.id}`}
+                        className="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                       >
-                        {skill}
-                      </span>
-                    ))}
+                        View Profile
+                      </Link>
+                    </div>
                   </div>
                 </div>
-
-                <div className="mt-6 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <svg
-                      className="h-5 w-5 text-gray-400"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span className="ml-2 text-sm text-gray-500">{mentor.country}</span>
-                  </div>
-                  <Link
-                    href={`/mentors/${mentor.id}`}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    View Profile
-                  </Link>
-                </div>
-              </div>
+              ))}
             </div>
-          ))
-        )}
+          ) : (
+            <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">No Mentors Currently Available</h3>
+              <p className="mt-2 text-sm text-gray-500">
+                Try adjusting your filters or check back later for new mentors matching your criteria.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
