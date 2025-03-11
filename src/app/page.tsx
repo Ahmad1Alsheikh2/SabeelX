@@ -207,9 +207,9 @@ export default function Home() {
               </div>
               <div className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-3">
                 <div className="text-left">
-                  <h3 className="text-lg font-semibold text-indigo-600">Empower Growth</h3>
+                  <h3 className="text-lg font-semibold text-indigo-600">Unlock Opportunity</h3>
                   <p className="mt-2 text-gray-600">
-                    Unlock your potential with guidance from industry experts who've walked the path before you. Transform challenges into stepping stones for success.
+                    Unlock your potential with guidance from our world-class mentors who've walked the path before you. Transform challenges into opportunities for success.
                   </p>
                 </div>
                 <div className="text-left">
