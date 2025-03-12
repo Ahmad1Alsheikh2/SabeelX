@@ -170,10 +170,10 @@ export default function AboutPage() {
           </p>
           <div className="mt-10">
             <a
-              href="/mentors"
+              href="/auth/signup"
               className="rounded-md bg-white px-6 py-3 text-lg font-semibold text-indigo-600 shadow-sm hover:bg-gray-100"
             >
-              Browse Mentors
+              Sign Up
             </a>
           </div>
         </div>
