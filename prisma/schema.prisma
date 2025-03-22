@@ -38,6 +38,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   isProfileComplete Boolean @default(false)
+  subscribed    Boolean   @default(false)
 }
 
 model Account {
