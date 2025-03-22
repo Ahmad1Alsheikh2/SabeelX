@@ -78,7 +78,7 @@ export default function SignUp() {
         if (result?.error) {
           setError(result.error)
         } else {
-          router.push('/profile/setup') // Redirect to profile setup instead of dashboard
+          router.push('/schedule') // Redirect to schedule page instead of profile setup
         }
       } else {
         const data = await response.json()

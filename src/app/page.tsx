@@ -100,6 +100,12 @@ export default function Home() {
               >
                 Learn More <span aria-hidden="true">→</span>
               </Link>
+              <Link
+                href="/auth/signup"
+                className="rounded-md bg-white px-6 py-3 text-lg font-semibold text-indigo-600 shadow-sm hover:bg-gray-100"
+              >
+                Schedule Your Free Consult
+              </Link>
             </div>
           </div>
         </div>
