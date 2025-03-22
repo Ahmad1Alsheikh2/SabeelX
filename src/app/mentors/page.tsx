@@ -4,6 +4,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import Paywall from '@/components/Paywall'
 
 type CategoryType = 'Admissions' | 'Professional Opportunities' | 'Tutoring'
 type SubCategoryType = 'College' | 'Business School' | 'Law School' | 'Medical School' | 'Dental School' |
@@ -77,10 +79,16 @@ const mentors = [
 ]
 
 export default function MentorsPage() {
+  const { data: session } = useSession()
   const searchParams = useSearchParams()
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | ''>(searchParams.get('category') as CategoryType || '')
   const [selectedFocusArea, setSelectedFocusArea] = useState<SubCategoryType | ''>(searchParams.get('focusArea') as SubCategoryType || '')
   const [selectedCountry, setSelectedCountry] = useState<string>(searchParams.get('country') || '')
+
+  // If user is not subscribed, show paywall
+  if (!session?.user?.subscribed) {
+    return <Paywall />;
+  }
 
   const handleCategoryChange = (category: CategoryType | '') => {
     setSelectedCategory(category)

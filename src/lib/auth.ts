@@ -13,6 +13,7 @@ declare module 'next-auth' {
             image?: string | null
             role?: string
             isProfileComplete?: boolean
+            subscribed?: boolean
         }
     }
 }
@@ -21,6 +22,7 @@ declare module 'next-auth/jwt' {
     interface JWT {
         role?: string
         isProfileComplete?: boolean
+        subscribed?: boolean
     }
 }
 
@@ -62,7 +64,8 @@ export const authOptions: NextAuthOptions = {
                     role: user.role,
                     firstName: user.firstName,
                     lastName: user.lastName,
-                    isProfileComplete: user.isProfileComplete
+                    isProfileComplete: user.isProfileComplete,
+                    subscribed: user.subscribed
                 }
             }
         }),
@@ -77,7 +80,8 @@ export const authOptions: NextAuthOptions = {
                     lastName: profile.family_name,
                     image: profile.picture,
                     role: 'USER',
-                    isProfileComplete: false
+                    isProfileComplete: false,
+                    subscribed: false
                 }
             }
         })
@@ -91,7 +95,8 @@ export const authOptions: NextAuthOptions = {
                     role: user.role,
                     firstName: user.firstName,
                     lastName: user.lastName,
-                    isProfileComplete: user.isProfileComplete
+                    isProfileComplete: user.isProfileComplete,
+                    subscribed: user.subscribed
                 }
             }
             return token
@@ -105,7 +110,8 @@ export const authOptions: NextAuthOptions = {
                     role: token.role,
                     firstName: token.firstName,
                     lastName: token.lastName,
-                    isProfileComplete: token.isProfileComplete
+                    isProfileComplete: token.isProfileComplete,
+                    subscribed: token.subscribed
                 }
             }
         }
