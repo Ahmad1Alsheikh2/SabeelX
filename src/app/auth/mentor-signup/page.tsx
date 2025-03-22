@@ -7,8 +7,8 @@ export default function MentorSignupRedirect() {
   const router = useRouter()
   
   useEffect(() => {
-    // Redirect to the regular signup page
-    router.push('/auth/signup?redirect=mentor')
+    // Redirect to the regular signup page with redirect parameter set to schedule
+    router.push('/auth/signup?redirect=schedule')
   }, [router])
   
   return (

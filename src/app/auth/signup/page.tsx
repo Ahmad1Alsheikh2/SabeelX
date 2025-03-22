@@ -91,8 +91,8 @@ export default function SignUp() {
           console.error('Error signing in after registration:', result.error)
           setError(result.error)
         } else {
-          console.log('Sign-in successful, redirecting to dashboard page')
-          router.push('/dashboard') // User will see profile completion alert on dashboard
+          console.log('Sign-in successful, redirecting to schedule page')
+          router.push('/schedule') // Redirect to schedule page instead of dashboard
         }
       } else {
         console.error('Registration failed:', data)
@@ -105,7 +105,7 @@ export default function SignUp() {
   }
 
   const handleGoogleSignIn = () => {
-    signIn('google', { callbackUrl: '/dashboard' })
+    signIn('google', { callbackUrl: '/schedule' })
   }
 
   return (

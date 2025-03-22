@@ -9,7 +9,8 @@ const publicPaths = [
     '/api/auth',
     '/',
     '/about',
-    '/mentors'
+    '/mentors',
+    '/schedule'
 ]
 
 const profileSetupPaths = [

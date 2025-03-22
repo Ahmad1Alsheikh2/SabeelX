@@ -1,10 +1,12 @@
 'use client'
 
 import Link from 'next/link'
+import AutoLogout from '@/components/AutoLogout'
 
 export default function SchedulePage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <AutoLogout />
       <div className="sm:mx-auto sm:w-full sm:max-w-lg">
         <div className="text-center">
           <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">

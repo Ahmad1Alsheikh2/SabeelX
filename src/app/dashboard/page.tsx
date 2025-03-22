@@ -4,6 +4,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import AutoLogout from '@/components/AutoLogout'
 
 export default function Dashboard() {
     const { data: session, status, update: updateSession } = useSession()
@@ -43,8 +44,8 @@ export default function Dashboard() {
             if (response.ok) {
                 // Update the session to reflect the new role
                 await updateSession()
-                // Redirect to mentor profile setup
-                router.push('/mentor/profile-setup')
+                // Redirect to mentor profile setup with a return URL to the schedule page
+                router.push('/mentor/profile-setup?returnUrl=/schedule')
             } else {
                 setUpgradeError(data.message || 'Failed to upgrade to mentor status')
             }
@@ -74,6 +75,7 @@ export default function Dashboard() {
 
     return (
         <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+            <AutoLogout />
             <div className="max-w-7xl mx-auto">
                 {/* Profile Completion Alert */}
                 {!session?.user?.isProfileComplete && (
