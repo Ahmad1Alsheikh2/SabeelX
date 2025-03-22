@@ -54,6 +54,12 @@ export default function SignUp() {
     }
 
     try {
+      console.log('Submitting signup form with data:', {
+        email: formData.email,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+      })
+
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
@@ -67,7 +73,11 @@ export default function SignUp() {
         }),
       })
 
+      const data = await response.json()
+      console.log('Signup API response:', { status: response.status, data })
+
       if (response.ok) {
+        console.log('Registration successful, attempting to sign in')
         // Sign in the user after successful registration
         const result = await signIn('credentials', {
           redirect: false,
@@ -75,19 +85,22 @@ export default function SignUp() {
           password: formData.password,
         })
 
+        console.log('Sign-in result:', result)
+
         if (result?.error) {
+          console.error('Error signing in after registration:', result.error)
           setError(result.error)
         } else {
+          console.log('Sign-in successful, redirecting to schedule page')
           router.push('/schedule') // Redirect to schedule page instead of profile setup
         }
       } else {
-        const data = await response.json()
-        console.error('Registration error:', data)
-        setError(data.details || data.message || 'Something went wrong')
+        console.error('Registration failed:', data)
+        setError(data.details ? `${data.message}: ${data.details}` : data.message || 'Something went wrong')
       }
     } catch (err) {
       console.error('Registration error:', err)
-      setError('An error occurred during registration. Please try again.')
+      setError('An error occurred during registration. Please try again. ' + (err instanceof Error ? err.message : ''))
     }
   }
 
@@ -124,6 +137,23 @@ export default function SignUp() {
           </div>
 
           <div className="py-8 px-4 sm:px-10">
+            {error && (
+              <div className="rounded-md bg-red-50 p-4 mb-6">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">Error</h3>
+                    <div className="mt-2 text-sm text-red-700">
+                      <p>{error}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
@@ -305,10 +335,6 @@ export default function SignUp() {
                   </button>
                 </div>
               </div>
-
-              {error && (
-                <div className="text-red-600 text-sm">{error}</div>
-              )}
 
               <div>
                 <button

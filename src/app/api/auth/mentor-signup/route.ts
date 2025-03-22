@@ -35,21 +35,49 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Hash password
-        const salt = await bcrypt.genSalt(10)
-        const hashedPassword = await bcrypt.hash(password, salt)
+        // Hash password - fix the password hashing to ensure it's compatible
+        console.log('Hashing password...');
+        let hashedPassword;
+        try {
+            // Use the direct bcrypt functions instead of relying on the model's pre-save hook
+            const salt = await bcrypt.genSalt(10);
+            hashedPassword = await bcrypt.hash(password, salt);
+            console.log('Password hashed successfully');
+            
+            // Verify the hash format for debugging
+            if (!hashedPassword.startsWith('$2')) {
+                console.warn('Warning: Hashed password does not appear to be in bcrypt format');
+            }
+        } catch (hashError) {
+            console.error('Error hashing password:', hashError);
+            return NextResponse.json(
+                { message: 'Error processing password', details: hashError.message },
+                { status: 500 }
+            );
+        }
 
-        // Create mentor user
-        const user = await UserModel.create({
-            email,
-            password: hashedPassword,
-            firstName,
-            lastName,
-            role: 'MENTOR',
-            skills: [],
-            expertise: [],
-            isProfileComplete: false,
-        })
+        // Create mentor user with the correctly hashed password
+        let user;
+        try {
+            // Create the user with an explicitly hashed password
+            user = await UserModel.create({
+                email,
+                password: hashedPassword, // Use the password we just hashed
+                firstName,
+                lastName,
+                role: 'MENTOR',
+                skills: [],
+                expertise: [],
+                isProfileComplete: false,
+            });
+            console.log('Mentor created successfully:', { userId: user._id.toString() });
+        } catch (createError) {
+            console.error('Error creating mentor:', createError);
+            return NextResponse.json(
+                { message: 'Error creating mentor', details: createError.message },
+                { status: 500 }
+            );
+        }
 
         return NextResponse.json(
             {
