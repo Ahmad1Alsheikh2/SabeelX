@@ -6,7 +6,6 @@ import { NextRequest } from 'next/server'
 const publicPaths = [
     '/auth/signin',
     '/auth/signup',
-    '/auth/mentor-signup',
     '/api/auth',
     '/',
     '/about',
@@ -16,6 +15,11 @@ const publicPaths = [
 const profileSetupPaths = [
     '/profile/setup',
     '/mentor/profile-setup'
+]
+
+const dashboardPaths = [
+    '/dashboard',
+    '/mentor/dashboard'
 ]
 
 export async function middleware(request: NextRequest) {
@@ -32,16 +36,25 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/auth/signin', request.url))
     }
 
-    // Allow access to profile setup pages
-    if (profileSetupPaths.some(path => pathname.startsWith(path))) {
-        return NextResponse.next()
-    }
-
-    // Check if profile is complete
+    // Check if profile is complete and the user's role
     const isProfileComplete = token.isProfileComplete as boolean
     const role = token.role as string
 
-    // If profile is not complete, redirect to appropriate setup page
+    // For mentors with incomplete profiles, always redirect to profile setup, even from dashboard
+    if (role === 'MENTOR' && !isProfileComplete) {
+        // Only if they're not already on the profile setup page
+        if (!pathname.startsWith('/mentor/profile-setup')) {
+            return NextResponse.redirect(new URL('/mentor/profile-setup', request.url))
+        }
+    }
+
+    // For users with complete profiles or non-mentors, allow access to dashboard and profile setup
+    if (profileSetupPaths.some(path => pathname.startsWith(path)) || 
+        dashboardPaths.some(path => pathname.startsWith(path))) {
+        return NextResponse.next()
+    }
+
+    // For other users (non-mentors) with incomplete profiles
     if (!isProfileComplete) {
         const setupPath = role === 'MENTOR' ? '/mentor/profile-setup' : '/profile/setup'
         if (!pathname.startsWith(setupPath)) {

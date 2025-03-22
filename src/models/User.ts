@@ -19,6 +19,8 @@ export interface IUser extends Document {
   availability?: number;
   emailVerified?: Date;
   isProfileComplete: boolean;
+  passwordMatch?: boolean;
+  signupSource?: 'MENTOR_SIGNUP' | 'USER_SIGNUP' | 'ADMIN';
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -86,6 +88,15 @@ const userSchema = new Schema<IUser>(
     isProfileComplete: {
       type: Boolean,
       default: false,
+    },
+    passwordMatch: {
+      type: Boolean,
+      default: false,
+    },
+    signupSource: {
+      type: String,
+      enum: ['MENTOR_SIGNUP', 'USER_SIGNUP', 'ADMIN'],
+      default: 'USER_SIGNUP',
     },
   },
   {

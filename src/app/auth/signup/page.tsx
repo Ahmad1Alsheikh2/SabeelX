@@ -91,8 +91,8 @@ export default function SignUp() {
           console.error('Error signing in after registration:', result.error)
           setError(result.error)
         } else {
-          console.log('Sign-in successful, redirecting to schedule page')
-          router.push('/schedule') // Redirect to schedule page instead of profile setup
+          console.log('Sign-in successful, redirecting to dashboard page')
+          router.push('/dashboard') // User will see profile completion alert on dashboard
         }
       } else {
         console.error('Registration failed:', data)
@@ -121,22 +121,30 @@ export default function SignUp() {
           {/* Tabs */}
           <div className="border-b border-gray-200">
             <div className="flex">
-              <Link
-                href="/auth/signup"
+              <div
                 className="flex-1 text-center py-4 px-4 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600"
               >
-                Sign up as Mentee
-              </Link>
-              <Link
-                href="/auth/mentor-signup"
-                className="flex-1 text-center py-4 px-4 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
-                Sign up as Mentor
-              </Link>
+                Sign up
+              </div>
             </div>
           </div>
 
           <div className="py-8 px-4 sm:px-10">
+            <div className="rounded-md bg-blue-50 p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3 flex-1 md:flex md:justify-between">
+                  <p className="text-sm text-blue-700">
+                    Want to be a mentor? Sign up as a regular user and upgrade from your dashboard.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
             {error && (
               <div className="rounded-md bg-red-50 p-4 mb-6">
                 <div className="flex">

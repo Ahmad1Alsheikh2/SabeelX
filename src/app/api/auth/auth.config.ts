@@ -14,7 +14,16 @@ declare module 'next-auth' {
             email?: string | null
             name?: string | null
             image?: string | null
+            role?: string
+            isProfileComplete?: boolean
         }
+    }
+}
+
+declare module 'next-auth/jwt' {
+    interface JWT {
+        role?: string
+        isProfileComplete?: boolean
     }
 }
 
@@ -53,6 +62,8 @@ export const authOptions: AuthOptions = {
                     id: user._id.toString(),
                     email: user.email,
                     name: `${user.firstName} ${user.lastName}`,
+                    role: user.role,
+                    isProfileComplete: user.isProfileComplete,
                 }
             },
         }),
@@ -64,11 +75,20 @@ export const authOptions: AuthOptions = {
         signIn: '/auth/signin',
     },
     callbacks: {
+        async jwt({ token, user }) {
+            if (user) {
+                token.role = user.role;
+                token.isProfileComplete = user.isProfileComplete;
+            }
+            return token;
+        },
         async session({ session, token }: { session: Session; token: JWT }) {
             if (token && session.user) {
-                session.user.id = token.sub!
+                session.user.id = token.sub!;
+                session.user.role = token.role;
+                session.user.isProfileComplete = token.isProfileComplete;
             }
-            return session
+            return session;
         },
     },
 } 

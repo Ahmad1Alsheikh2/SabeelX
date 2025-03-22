@@ -63,6 +63,15 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    passwordMatch: {
+        type: Boolean,
+        default: false
+    },
+    signupSource: {
+        type: String,
+        enum: ['MENTOR_SIGNUP', 'USER_SIGNUP', 'ADMIN'],
+        default: 'USER_SIGNUP'
+    },
     createdAt: {
         type: Date,
         default: Date.now

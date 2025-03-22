@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
             );
         }
         
-        const { email, password, firstName, lastName } = body
+        const { email, password, confirmPassword, firstName, lastName } = body
 
         console.log('Received signup request for:', { email, firstName, lastName });
 
@@ -41,6 +41,18 @@ export async function POST(request: NextRequest) {
             console.log('Password too short');
             return NextResponse.json(
                 { message: 'Password should be at least 8 characters long' },
+                { status: 400 }
+            )
+        }
+        
+        // Check if password and confirmPassword match
+        const passwordsMatch = password === confirmPassword;
+        console.log('Passwords match check:', passwordsMatch);
+        
+        if (!passwordsMatch && confirmPassword !== undefined) {
+            console.log('Passwords do not match');
+            return NextResponse.json(
+                { message: 'Passwords do not match' },
                 { status: 400 }
             )
         }
@@ -80,49 +92,30 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Hash password - fix the password hashing to ensure it's compatible
-        console.log('Hashing password...');
-        let hashedPassword;
-        try {
-            // Use the direct bcrypt functions instead of relying on the model's pre-save hook
-            const salt = await bcrypt.genSalt(10);
-            hashedPassword = await bcrypt.hash(password, salt);
-            console.log('Password hashed successfully');
-            
-            // Verify the hash format for debugging
-            if (!hashedPassword.startsWith('$2')) {
-                console.warn('Warning: Hashed password does not appear to be in bcrypt format');
-            }
-        } catch (hashError) {
-            console.error('Error hashing password:', hashError);
-            return NextResponse.json(
-                { message: 'Error processing password', details: hashError.message },
-                { status: 500 }
-            );
-        }
+        // IMPORTANT: Password hashing is now handled by the model's pre-save hook
+        // We should NOT manually hash the password here to avoid double-hashing
+        console.log('Creating new user - password will be hashed by schema pre-save hook');
 
-        console.log('Creating new user with data:', {
-            email,
-            firstName,
-            lastName,
-            role: 'USER'
-        });
-
-        // Create user with the correctly hashed password
+        // Create user with the plain password - schema will hash it
         let user;
         try {
-            // Create the user with an explicitly hashed password
+            // Create the user with plain password - let the schema handle hashing
             user = await UserModel.create({
                 email,
-                password: hashedPassword, // Use the password we just hashed
+                password, // Use plain password - model's pre-save hook will hash it
                 firstName,
                 lastName,
                 role: 'USER',
                 skills: [],
                 expertise: [],
                 isProfileComplete: false,
+                passwordMatch: passwordsMatch || false, // Store password match status for debugging
+                signupSource: 'USER_SIGNUP' // Mark as coming from regular user signup
             });
-            console.log('User created successfully:', { userId: user._id.toString() });
+            console.log('User created successfully:', { 
+                userId: user._id.toString(),
+                passwordMatch: user.passwordMatch
+            });
         } catch (createError) {
             console.error('Error creating user:', createError);
             return NextResponse.json(
