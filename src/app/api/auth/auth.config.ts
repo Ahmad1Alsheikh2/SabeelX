@@ -1,10 +1,11 @@
 import { AuthOptions, Session } from 'next-auth'
 import { JWT } from 'next-auth/jwt'
-import { PrismaAdapter } from '@auth/prisma-adapter'
 import GoogleProvider from 'next-auth/providers/google'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import prisma from '@/lib/prisma'
 import { compare } from 'bcryptjs'
+import MongoDBAdapter from '@/lib/mongodb-adapter'
+import dbConnect from '@/lib/mongodb'
+import UserModel from '@/models/User'
 
 declare module 'next-auth' {
     interface Session {
@@ -18,7 +19,7 @@ declare module 'next-auth' {
 }
 
 export const authOptions: AuthOptions = {
-    adapter: PrismaAdapter(prisma),
+    adapter: MongoDBAdapter(),
     providers: [
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -35,22 +36,21 @@ export const authOptions: AuthOptions = {
                     throw new Error('Incorrect email or password')
                 }
 
-                const user = await prisma.user.findUnique({
-                    where: { email: credentials.email },
-                })
+                await dbConnect();
+                const user = await UserModel.findOne({ email: credentials.email });
 
                 if (!user || !user.password) {
                     throw new Error('Email address not found')
                 }
 
-                const isPasswordValid = await compare(credentials.password, user.password)
+                const isPasswordValid = await user.comparePassword(credentials.password);
 
                 if (!isPasswordValid) {
                     throw new Error('Incorrect password')
                 }
 
                 return {
-                    id: user.id,
+                    id: user._id.toString(),
                     email: user.email,
                     name: `${user.firstName} ${user.lastName}`,
                 }

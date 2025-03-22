@@ -17,16 +17,16 @@ SabeelX is a modern web platform that connects mentees with experienced mentors 
 - Next.js 14 with App Router
 - TypeScript
 - Tailwind CSS
-- Prisma (Database ORM)
+- MongoDB (Database)
+- Mongoose (ODM)
 - NextAuth.js (Authentication)
-- PostgreSQL (Database)
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+ and npm
-- PostgreSQL database
+- MongoDB database
 - Google OAuth credentials
 
 ### Environment Setup
@@ -44,19 +44,14 @@ npm install
 
 3. Create a `.env` file in the root directory with the following variables:
 ```env
-DATABASE_URL="postgresql://user:password@localhost:5432/sabeelx"
+MONGODB_URI="mongodb://localhost:27017/sabeelx"
 GOOGLE_CLIENT_ID="your_google_client_id"
 GOOGLE_CLIENT_SECRET="your_google_client_secret"
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="your_nextauth_secret"
 ```
 
-4. Set up the database:
-```bash
-npx prisma migrate dev
-```
-
-5. Start the development server:
+4. Start the development server:
 ```bash
 npm run dev
 ```
@@ -71,8 +66,9 @@ sabeelx/
 │   ├── app/                 # Next.js app router pages
 │   ├── components/          # Reusable React components
 │   ├── lib/                 # Utility functions and configurations
-│   └── types/              # TypeScript type definitions
-├── prisma/                  # Database schema and migrations
+│   ├── models/              # Mongoose data models
+│   └── types/               # TypeScript type definitions
+├── models/                  # Legacy Mongoose models
 ├── public/                  # Static assets
 └── package.json            # Project dependencies and scripts
 ```

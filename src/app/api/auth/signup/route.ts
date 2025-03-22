@@ -1,11 +1,12 @@
-import { NextResponse } from 'next/server'
-import { hash } from 'bcryptjs'
-import prisma from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
+import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
+import dbConnect from '@/lib/mongodb'
+import UserModel from '@/models/User'
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
     try {
-        const { email, password, firstName, lastName } = await req.json()
+        const body = await request.json()
+        const { email, password, firstName, lastName } = body
 
         console.log('Received signup request for:', { email, firstName, lastName })
 
@@ -16,44 +17,29 @@ export async function POST(req: Request) {
             )
         }
 
-        // Validate password requirements
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
-        if (!passwordRegex.test(password)) {
+        if (password.length < 8) {
             return NextResponse.json(
-                { message: 'Password does not meet security requirements' },
+                { message: 'Password should be at least 8 characters long' },
                 { status: 400 }
             )
         }
 
-        // Check if user already exists
-        try {
-            const existingUser = await prisma.user.findUnique({
-                where: { email },
-            })
+        // Connect to database
+        await dbConnect()
 
-            if (existingUser) {
-                return NextResponse.json(
-                    { message: 'User already exists' },
-                    { status: 400 }
-                )
-            }
-        } catch (dbError: any) {
-            console.error('Database connection error:', {
-                error: dbError.message,
-                stack: dbError.stack,
-                cause: dbError.cause
-            })
-            if (dbError.message.includes('DATABASE_URL')) {
-                return NextResponse.json(
-                    { message: 'Database connection not configured. Please contact support.' },
-                    { status: 500 }
-                )
-            }
-            throw dbError // Re-throw if it's a different error
+        // Check if user already exists
+        const existingUser = await UserModel.findOne({ email })
+
+        if (existingUser) {
+            return NextResponse.json(
+                { message: 'User with this email already exists' },
+                { status: 409 }
+            )
         }
 
-        // Hash the password
-        const hashedPassword = await hash(password, 12)
+        // Hash password
+        const salt = await bcrypt.genSalt(10)
+        const hashedPassword = await bcrypt.hash(password, salt)
 
         console.log('Creating new user with data:', {
             email,
@@ -62,38 +48,48 @@ export async function POST(req: Request) {
             role: 'USER'
         })
 
-        // Create user with isProfileComplete set to false
-        const user = await prisma.user.create({
-            data: {
-                email,
-                password: hashedPassword,
-                firstName,
-                lastName,
-                role: 'USER',
-                isProfileComplete: false,
-                skills: [],
-            } as Prisma.UserCreateInput,
+        // Create user
+        const user = await UserModel.create({
+            email,
+            password: hashedPassword,
+            firstName,
+            lastName,
+            role: 'USER',
+            skills: [],
+            expertise: [],
+            isProfileComplete: false,
         })
 
-        console.log('User created successfully:', { userId: user.id })
+        console.log('User created successfully:', { userId: user._id.toString() })
 
         return NextResponse.json(
-            { message: 'User created successfully', userId: user.id },
+            {
+                message: 'User registered successfully',
+                user: {
+                    id: user._id.toString(),
+                    email: user.email,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                },
+            },
             { status: 201 }
         )
     } catch (error: any) {
-        console.error('Registration error details:', {
-            error: error.message,
-            stack: error.stack,
-            cause: error.cause,
-            code: error.code,
-            meta: error.meta
-        })
+        console.error('Registration error:', error)
+        
+        // Check for database connection errors
+        if (error.name === 'MongoServerError' || error.name === 'MongoNetworkError') {
+            console.error('Database connection error:', error)
+            if (error.message.includes('ECONNREFUSED')) {
+                return NextResponse.json(
+                    { message: 'Database connection not configured. Please contact support.' },
+                    { status: 500 }
+                )
+            }
+        }
+
         return NextResponse.json(
-            {
-                message: 'Error creating user',
-                details: process.env.NODE_ENV === 'development' ? error.message : undefined
-            },
+            { message: 'Internal server error', details: error.message },
             { status: 500 }
         )
     }
