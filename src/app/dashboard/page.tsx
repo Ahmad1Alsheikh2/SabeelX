@@ -88,8 +88,8 @@ export default function Dashboard() {
                             </div>
                             <div className="ml-3">
                                 <p className="text-sm text-yellow-700">
-                                    Your profile is incomplete. 
-                                    <button 
+                                    Your profile is incomplete.
+                                    <button
                                         onClick={() => router.push('/profile/setup')}
                                         className="ml-2 font-medium underline text-yellow-700 hover:text-yellow-600"
                                     >
@@ -100,7 +100,7 @@ export default function Dashboard() {
                         </div>
                     </div>
                 )}
-                
+
                 {/* Profile Overview */}
                 <div className="bg-white shadow rounded-lg p-6 mb-6">
                     <div className="flex items-center">
@@ -124,9 +124,8 @@ export default function Dashboard() {
                             </h1>
                             <p className="text-gray-600">{session?.user?.email}</p>
                             {/* Display role badge */}
-                            <span className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                session?.user?.role === 'MENTOR' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                            }`}>
+                            <span className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${session?.user?.role === 'MENTOR' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                                }`}>
                                 {session?.user?.role === 'MENTOR' ? 'Mentor' : 'User'}
                             </span>
                         </div>
@@ -156,14 +155,36 @@ export default function Dashboard() {
                     {/* Upcoming Sessions */}
                     <div className="bg-white shadow rounded-lg p-6">
                         <h2 className="text-lg font-medium text-gray-900 mb-4">Upcoming Sessions</h2>
-                        <div className="text-center text-gray-500 py-4">
-                            <p>No upcoming sessions</p>
-                            <button
-                                onClick={() => router.push('/mentors')}
-                                className="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-                            >
-                                Find a Mentor
-                            </button>
+                        <div className="space-y-4">
+                            {/* Free Consultation Card */}
+                            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4">
+                                <h3 className="text-lg font-semibold text-indigo-900 mb-2">
+                                    Get Started with a Free Consultation
+                                </h3>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Book a free 30-minute consultation with one of our expert mentors to discuss your goals and find the perfect match.
+                                </p>
+                                <button
+                                    onClick={() => router.push('/schedule?type=consultation')}
+                                    className="w-full bg-indigo-600 text-white rounded-md px-4 py-2 text-sm font-semibold hover:bg-indigo-700 transition-colors duration-200"
+                                >
+                                    Schedule Free Consultation
+                                </button>
+                            </div>
+
+                            {/* Upcoming Sessions List */}
+                            <div className="border-t pt-4">
+                                <h3 className="text-sm font-medium text-gray-900 mb-3">Your Sessions</h3>
+                                <div className="text-center text-gray-500 py-4">
+                                    <p>No upcoming sessions</p>
+                                    <button
+                                        onClick={() => router.push('/mentors')}
+                                        className="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                                    >
+                                        Find a Mentor
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -177,7 +198,7 @@ export default function Dashboard() {
                             >
                                 Edit Profile
                             </button>
-                            
+
                             {/* Mentor Upgrade Button - only show if user is not already a mentor */}
                             {session?.user?.role !== 'MENTOR' && (
                                 <button
@@ -188,12 +209,12 @@ export default function Dashboard() {
                                     {isUpgrading ? 'Upgrading...' : 'Become a Mentor'}
                                 </button>
                             )}
-                            
+
                             {/* Show error if upgrade fails */}
                             {upgradeError && (
                                 <div className="text-sm text-red-600">{upgradeError}</div>
                             )}
-                            
+
                             <button
                                 onClick={() => router.push('/mentors')}
                                 className="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"

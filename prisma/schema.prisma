@@ -39,6 +39,9 @@ model User {
   sessions      Session[]
   isProfileComplete Boolean @default(false)
   subscribed    Boolean   @default(false)
+  mentorAvailability MentorAvailability[]
+  mentorBookings     Booking[]  @relation("MentorBookings")
+  menteeBookings     Booking[]  @relation("MenteeBookings")
 }
 
 model Account {
@@ -66,4 +69,39 @@ model Session {
   userId       String   @db.ObjectId
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MentorAvailability {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  mentorId    String   @db.ObjectId
+  dayOfWeek   Int      // 0-6 for Sunday-Saturday
+  startTime   String   // Format: "HH:mm"
+  endTime     String   // Format: "HH:mm"
+  timeZone    String   // e.g., "America/New_York"
+  mentor      User     @relation(fields: [mentorId], references: [id])
+  bookings    Booking[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([mentorId])
+}
+
+model Booking {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  mentorId     String   @db.ObjectId
+  menteeId     String   @db.ObjectId
+  availabilityId String @db.ObjectId
+  startTime    DateTime
+  endTime      DateTime
+  status       String   @default("pending") // pending, confirmed, cancelled, completed
+  timeZone     String
+  mentor       User     @relation("MentorBookings", fields: [mentorId], references: [id])
+  mentee       User     @relation("MenteeBookings", fields: [menteeId], references: [id])
+  availability MentorAvailability @relation(fields: [availabilityId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([mentorId])
+  @@index([menteeId])
+  @@index([availabilityId])
 }
