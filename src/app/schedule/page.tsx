@@ -1,237 +1,222 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { DayPicker } from 'react-day-picker'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { DateTime } from 'luxon'
-import AutoLogout from '@/components/AutoLogout'
-import 'react-day-picker/dist/style.css'
+import { supabase } from '@/lib/supabase'
+import Calendar from '@/components/Calendar'
 
 export default function SchedulePage() {
-  const { data: session } = useSession()
   const router = useRouter()
-
-  const [selectedDate, setSelectedDate] = useState<Date>()
+  const searchParams = useSearchParams()
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [availableSlots, setAvailableSlots] = useState<any[]>([])
-  const [selectedSlot, setSelectedSlot] = useState<string>()
-  const [timeZone, setTimeZone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [subscription, setSubscription] = useState<any>(null)
+
+  const mentorId = searchParams.get('mentorId')
+  const isConsultation = searchParams.get('type') === 'consultation'
 
   useEffect(() => {
-    if (selectedDate) {
-      fetchAvailability(selectedDate)
+    // Check authentication
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/auth/signin')
+        return
+      }
     }
-  }, [selectedDate, timeZone])
 
-  const fetchAvailability = async (date: Date) => {
-    try {
+    checkAuth()
+  }, [router])
+
+  useEffect(() => {
+    const fetchAvailability = async () => {
       setLoading(true)
       setError('')
 
-      const startDateTime = DateTime.fromJSDate(date).startOf('day')
-      const endDateTime = DateTime.fromJSDate(date).endOf('day')
+      try {
+        const startDateTime = DateTime.fromJSDate(selectedDate).startOf('day')
+        const endDateTime = DateTime.fromJSDate(selectedDate).endOf('day')
 
-      if (!startDateTime.isValid || !endDateTime.isValid) {
-        throw new Error('Invalid date selected')
-      }
+        let query = supabase
+          .from('mentor_availability')
+          .select(`
+            *,
+            mentor:users!mentor_id (
+              id,
+              first_name,
+              last_name,
+              image_url
+            )
+          `)
+          .gte('start_time', startDateTime.toISO())
+          .lte('end_time', endDateTime.toISO())
+          .not('id', 'in', (sub) => {
+            return sub
+              .from('bookings')
+              .select('availability_id')
+              .in('status', ['PENDING', 'CONFIRMED'])
+          })
 
-      const params = new URLSearchParams({
-        startDate: startDateTime.toISO(),
-        endDate: endDateTime.toISO()
-      })
-
-      const response = await fetch(`/api/schedule/availability?${params}`)
-      if (!response.ok) {
-        const text = await response.text()
-        console.error('API Response:', text)
-        throw new Error('Failed to fetch availability')
-      }
-
-      const data = await response.json()
-      console.log('Received availability data:', data)
-
-      if (!Array.isArray(data)) {
-        throw new Error('Invalid response format')
-      }
-
-      // Process the availability slots
-      const availableSlots = data.map(slot => {
-        try {
-          // Convert times from EST to user's timezone
-          const startTime = DateTime.fromFormat(`${startDateTime.toFormat('yyyy-MM-dd')} ${slot.startTime}`, 'yyyy-MM-dd HH:mm', { zone: slot.timeZone })
-          const endTime = DateTime.fromFormat(`${startDateTime.toFormat('yyyy-MM-dd')} ${slot.endTime}`, 'yyyy-MM-dd HH:mm', { zone: slot.timeZone })
-
-          // Convert to user's timezone
-          const localStartTime = startTime.setZone(timeZone)
-          const localEndTime = endTime.setZone(timeZone)
-
-          return {
-            id: slot.id,
-            startTime: localStartTime.toFormat('HH:mm'),
-            endTime: localEndTime.toFormat('HH:mm')
-          }
-        } catch (err) {
-          console.error('Error processing slot:', err, slot)
-          return null
+        // If specific mentor, filter by mentor_id
+        if (mentorId) {
+          query = query.eq('mentor_id', mentorId)
         }
-      }).filter(Boolean)
 
-      console.log('Processed slots:', availableSlots)
-      setAvailableSlots(availableSlots)
-    } catch (error) {
-      console.error('Error fetching availability:', error)
-      setError(error instanceof Error ? error.message : 'Failed to load available time slots')
-    } finally {
-      setLoading(false)
+        const { data: slots, error: fetchError } = await query
+
+        if (fetchError) throw fetchError
+
+        setAvailableSlots(slots || [])
+      } catch (err) {
+        console.error('Error fetching availability:', err)
+        setError('Failed to load available time slots')
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
-  const handleBooking = async () => {
-    if (!selectedSlot || !selectedDate) return
+    fetchAvailability()
 
-    setLoading(true)
-    setError('')
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('mentor_availability_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'mentor_availability'
+        },
+        (payload) => {
+          // Refresh availability when changes occur
+          fetchAvailability()
+        }
+      )
+      .subscribe()
 
+    setSubscription(subscription)
+
+    return () => {
+      // Clean up subscription
+      if (subscription) {
+        supabase.removeChannel(subscription)
+      }
+    }
+  }, [selectedDate, mentorId, router])
+
+  const handleBookSlot = async (slotId: string) => {
     try {
-      const slot = availableSlots.find(s => `${s.startTime}-${s.endTime}` === selectedSlot)
-      if (!slot) throw new Error('Invalid slot selected')
-
-      const startDateTime = DateTime.fromFormat(slot.startTime, 'HH:mm', { zone: timeZone })
-        .set({ year: selectedDate.getFullYear(), month: selectedDate.getMonth() + 1, day: selectedDate.getDate() })
-
-      const endDateTime = DateTime.fromFormat(slot.endTime, 'HH:mm', { zone: timeZone })
-        .set({ year: selectedDate.getFullYear(), month: selectedDate.getMonth() + 1, day: selectedDate.getDate() })
-
-      const response = await fetch('/api/schedule/booking', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          startTime: startDateTime.toISO(),
-          endTime: endDateTime.toISO(),
-          timeZone
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to book appointment')
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/auth/signin')
+        return
       }
 
-      router.push('/dashboard?booking=success')
+      const { data: slot } = await supabase
+        .from('mentor_availability')
+        .select('*')
+        .eq('id', slotId)
+        .single()
+
+      if (!slot) {
+        throw new Error('Slot not found')
+      }
+
+      const { error: bookingError } = await supabase
+        .from('bookings')
+        .insert({
+          mentor_id: slot.mentor_id,
+          mentee_id: session.user.id,
+          availability_id: slotId,
+          start_time: slot.start_time,
+          end_time: slot.end_time,
+          status: 'PENDING'
+        })
+
+      if (bookingError) throw bookingError
+
+      router.push('/dashboard')
     } catch (err) {
-      setError('Failed to book appointment')
-      console.error(err)
-    } finally {
-      setLoading(false)
+      console.error('Error booking slot:', err)
+      setError('Failed to book the slot')
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <AutoLogout />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-extrabold text-gray-900 text-center mb-4">
-            Schedule Your Free Consultation
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="md:grid md:grid-cols-3 md:gap-6">
+        <div className="md:col-span-1">
+          <h1 className="text-2xl font-bold text-gray-900">
+            {isConsultation ? 'Book a Consultation' : 'Schedule a Session'}
           </h1>
+          <p className="mt-2 text-sm text-gray-500">
+            Select a date and available time slot to schedule your session.
+          </p>
+        </div>
 
-          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-6 mb-8 text-center">
-            <h2 className="text-xl font-semibold text-indigo-900 mb-2">
-              Free 30-Minute Consultation
-            </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Meet with one of our expert mentors to discuss your goals, experience, and find the perfect mentor match for your journey.
-            </p>
-          </div>
+        <div className="mt-5 md:mt-0 md:col-span-2">
+          <div className="bg-white shadow sm:rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <Calendar
+                selectedDate={selectedDate}
+                onChange={setSelectedDate}
+              />
 
-          <div className="bg-white shadow-lg rounded-xl p-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Calendar */}
-              <div className="bg-gray-50 rounded-xl p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Select a Date</h2>
-                <DayPicker
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  disabled={{ before: new Date() }}
-                  className="mx-auto"
-                />
-              </div>
-
-              {/* Time Slots */}
-              <div className="bg-gray-50 rounded-xl p-6">
-                <div className="flex flex-col gap-4 mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">Select a Time</h2>
-                  <div className="flex items-center gap-3 text-sm">
-                    <span className="text-gray-600">Your timezone:</span>
-                    <select
-                      value={timeZone}
-                      onChange={(e) => setTimeZone(e.target.value)}
-                      className="flex-1 border rounded-md p-2 bg-white shadow-sm hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    >
-                      {Intl.supportedValuesOf('timeZone').map(tz => {
-                        const offset = DateTime.now().setZone(tz).toFormat('ZZZZ')
-                        const friendlyName = tz.split('/').pop()?.replace(/_/g, ' ')
-                        const displayName = tz === 'Asia/Riyadh' ? 'Riyadh/Jeddah' : friendlyName
-                        return (
-                          <option key={tz} value={tz}>
-                            {displayName} ({offset})
-                          </option>
-                        )
-                      })}
-                    </select>
+              {loading ? (
+                <div className="mt-6 text-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-blue-500"></div>
+                </div>
+              ) : error ? (
+                <div className="mt-6 bg-red-50 border border-red-200 rounded-md p-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-red-700">{error}</p>
+                    </div>
                   </div>
                 </div>
-
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                  </div>
-                ) : error ? (
-                  <div className="bg-red-50 text-red-600 text-center py-8 rounded-lg">{error}</div>
-                ) : !selectedDate ? (
-                  <div className="bg-indigo-50 text-indigo-600 text-center py-8 rounded-lg">
-                    Please select a date to view available time slots
-                  </div>
-                ) : availableSlots.length === 0 ? (
-                  <div className="bg-yellow-50 text-yellow-600 text-center py-8 rounded-lg">
-                    No available slots for the selected date. Please select a weekend (Saturday or Sunday).
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {availableSlots.map((slot) => (
+              ) : availableSlots.length === 0 ? (
+                <div className="mt-6 text-center text-gray-500">
+                  No available slots for this date.
+                </div>
+              ) : (
+                <div className="mt-6 grid grid-cols-2 gap-4">
+                  {availableSlots.map((slot) => (
+                    <div
+                      key={slot.id}
+                      className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="focus:outline-none">
+                          <p className="text-sm font-medium text-gray-900">
+                            {DateTime.fromISO(slot.start_time).toLocaleString(DateTime.TIME_SIMPLE)}
+                            {' - '}
+                            {DateTime.fromISO(slot.end_time).toLocaleString(DateTime.TIME_SIMPLE)}
+                          </p>
+                          {slot.mentor && (
+                            <p className="text-sm text-gray-500">
+                              with {slot.mentor.first_name} {slot.mentor.last_name}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                       <button
-                        key={`${slot.startTime}-${slot.endTime}`}
-                        onClick={() => setSelectedSlot(`${slot.startTime}-${slot.endTime}`)}
-                        className={`p-3 text-sm rounded-lg transition-all duration-200 ${selectedSlot === `${slot.startTime}-${slot.endTime}`
-                          ? 'bg-indigo-600 text-white shadow-md'
-                          : 'bg-white hover:bg-indigo-50 hover:text-indigo-600 border border-gray-200'
-                          }`}
+                        onClick={() => handleBookSlot(slot.id)}
+                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                       >
-                        {slot.startTime} - {slot.endTime}
+                        Book
                       </button>
-                    ))}
-                  </div>
-                )}
-
-                {selectedSlot && (
-                  <button
-                    onClick={handleBooking}
-                    disabled={loading}
-                    className="w-full mt-6 bg-indigo-600 text-white rounded-lg px-6 py-3 text-base font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors duration-200 shadow-md hover:shadow-lg"
-                  >
-                    {loading ? (
-                      <span className="flex items-center justify-center">
-                        <span className="animate-spin h-5 w-5 mr-3 border-b-2 border-white rounded-full"></span>
-                        Booking...
-                      </span>
-                    ) : (
-                      'Confirm Booking'
-                    )}
-                  </button>
-                )}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

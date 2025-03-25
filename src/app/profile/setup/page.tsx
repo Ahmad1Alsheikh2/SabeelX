@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { supabase } from '@/lib/supabase'
 
 export default function ProfileSetup() {
     const router = useRouter()
-    const { data: session, status } = useSession()
+    const [session, setSession] = useState<any>(null)
+    const [loading, setLoading] = useState(true)
     const [formData, setFormData] = useState({
         bio: '',
         phoneNumber: '',
@@ -15,15 +16,53 @@ export default function ProfileSetup() {
     const [error, setError] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-    if (status === 'loading') {
-        return <div className="flex justify-center items-center min-h-screen">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-        </div>
-    }
+    useEffect(() => {
+        // Check authentication
+        const checkAuth = async () => {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession()
+                if (error) throw error
 
-    if (status === 'unauthenticated') {
-        router.push('/auth/signin')
-        return null
+                if (!session) {
+                    router.replace('/auth/signin')
+                    return
+                }
+
+                setSession(session)
+
+                // Get existing profile data
+                const { data: profile, error: profileError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single()
+
+                if (profileError) throw profileError
+
+                if (profile) {
+                    setFormData(prev => ({
+                        ...prev,
+                        bio: profile.bio || '',
+                        phoneNumber: profile.phone_number || '',
+                    }))
+                }
+            } catch (err) {
+                console.error('Error loading profile:', err)
+                setError('Failed to load profile data')
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        checkAuth()
+    }, [])
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+            </div>
+        )
     }
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,51 +88,127 @@ export default function ProfileSetup() {
         setIsSubmitting(true)
         setError('')
 
-        if (!validateForm()) {
+        if (!validateForm() || !session?.user) {
             setIsSubmitting(false)
             return
         }
 
         try {
-            // First upload the image if one is selected
-            let imageUrl = null
-            if (formData.image) {
-                const imageFormData = new FormData()
-                imageFormData.append('file', formData.image)
+            // First, ensure the user exists in the users table
+            const { data: existingUser, error: userCheckError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('id', session.user.id)
+                .single()
 
-                const uploadResponse = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: imageFormData,
-                })
+            if (userCheckError) {
+                console.error('Error checking user:', userCheckError)
+                // If user doesn't exist, create them
+                const { error: insertError } = await supabase
+                    .from('users')
+                    .insert({
+                        id: session.user.id,
+                        email: session.user.email,
+                        first_name: session.user.user_metadata?.first_name || '',
+                        last_name: session.user.user_metadata?.last_name || '',
+                        role: 'USER'
+                    })
 
-                if (uploadResponse.ok) {
-                    const { url } = await uploadResponse.json()
-                    imageUrl = url
+                if (insertError) {
+                    console.error('Error creating user:', insertError)
+                    throw new Error('Failed to create user profile')
                 }
             }
 
-            // Update profile
-            const response = await fetch('/api/profile/update', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    bio: formData.bio,
-                    phoneNumber: formData.phoneNumber,
-                    image: imageUrl,
-                    isProfileComplete: true,
-                }),
-            })
+            let imageUrl = null
+            if (formData.image) {
+                try {
+                    // Upload image to Supabase Storage
+                    const fileExt = formData.image.name.split('.').pop()
+                    const fileName = `${Math.random()}.${fileExt}`
+                    const filePath = `${session.user.id}/${fileName}`
 
-            if (response.ok) {
-                router.push('/dashboard')
-            } else {
-                const data = await response.json()
-                setError(data.message || 'Something went wrong')
+                    const { error: uploadError } = await supabase.storage
+                        .from('profile-images')
+                        .upload(filePath, formData.image)
+
+                    if (uploadError) {
+                        console.error('Error uploading image:', uploadError)
+                        throw new Error('Failed to upload profile image')
+                    }
+
+                    // Get the public URL
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('profile-images')
+                        .getPublicUrl(filePath)
+
+                    imageUrl = publicUrl
+                } catch (imageError) {
+                    console.error('Image upload failed:', imageError)
+                    // Continue without image if upload fails
+                }
             }
-        } catch (err) {
-            setError('An error occurred while updating your profile')
+
+            // Update user profile
+            const updateData: any = {
+                bio: formData.bio,
+                is_profile_complete: true,
+                updated_at: new Date().toISOString()
+            }
+
+            // Only add image_url if we have one
+            if (imageUrl) {
+                updateData.image_url = imageUrl
+            }
+
+            // Try updating without phone number first
+            let { error: updateError } = await supabase
+                .from('users')
+                .update(updateData)
+                .eq('id', session.user.id)
+
+            if (updateError && updateError.message.includes('phone_number')) {
+                console.log('Adding phone_number column...')
+                // Add the phone_number column
+                const { error: alterError } = await supabase
+                    .rpc('add_phone_number_column')
+
+                if (alterError) {
+                    console.error('Error adding phone_number column:', alterError)
+                    throw new Error('Failed to update database schema')
+                }
+
+                // Try the update again with phone number
+                if (formData.phoneNumber) {
+                    updateData.phone_number = formData.phoneNumber
+                    const { error: retryError } = await supabase
+                        .from('users')
+                        .update(updateData)
+                        .eq('id', session.user.id)
+
+                    if (retryError) {
+                        console.error('Error in retry update:', retryError)
+                        throw new Error(`Failed to update profile: ${retryError.message}`)
+                    }
+                }
+            } else if (updateError) {
+                console.error('Error updating profile:', updateError)
+                throw new Error(`Failed to update profile: ${updateError.message}${updateError.details ? ` - ${updateError.details}` : ''}`)
+            }
+
+            router.push('/dashboard')
+        } catch (err: any) {
+            console.error('Profile update error:', err)
+            setError(err.message || 'An error occurred while updating your profile')
+            // Log the full error object for debugging
+            if (err.error) {
+                console.error('Detailed error:', {
+                    code: err.error.code,
+                    message: err.error.message,
+                    details: err.error.details,
+                    hint: err.error.hint
+                })
+            }
         } finally {
             setIsSubmitting(false)
         }

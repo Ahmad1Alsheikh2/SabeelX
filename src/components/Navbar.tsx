@@ -1,21 +1,36 @@
 'use client'
 
 import Link from 'next/link'
-import { useSession, signOut } from 'next-auth/react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 export default function Navbar() {
-  const { data: session } = useSession()
+  const [session, setSession] = useState<any>(null)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const router = useRouter()
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+    })
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true)
-      // Start the sign out process but don't wait for redirect
-      await signOut({ redirect: false })
-      // Use client-side navigation for a smoother transition
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
       router.push('/')
     } catch (error) {
       console.error('Error signing out:', error)

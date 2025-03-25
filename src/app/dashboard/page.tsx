@@ -1,24 +1,125 @@
 'use client'
 
-import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import { supabase } from '@/lib/supabase'
 import AutoLogout from '@/components/AutoLogout'
 
 export default function Dashboard() {
-    const { data: session, status, update: updateSession } = useSession()
     const router = useRouter()
+    const [session, setSession] = useState<any>(null)
+    const [profile, setProfile] = useState<any>(null)
+    const [loading, setLoading] = useState(true)
     const [isSigningOut, setIsSigningOut] = useState(false)
     const [isUpgrading, setIsUpgrading] = useState(false)
     const [upgradeError, setUpgradeError] = useState('')
 
+    useEffect(() => {
+        let mounted = true
+
+        const checkAuth = async () => {
+            try {
+                // Check for existing session
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+                if (sessionError) throw sessionError
+
+                if (!session?.user) {
+                    // No session found, redirect to sign in
+                    router.replace('/auth/signin')
+                    return
+                }
+
+                if (mounted) {
+                    setSession(session)
+
+                    // Get user profile
+                    const { data: profile, error: profileError } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single()
+
+                    if (profileError) {
+                        console.error('Error fetching profile:', profileError)
+                        // If we can't get the profile, sign out and redirect
+                        await supabase.auth.signOut()
+                        router.replace('/auth/signin')
+                        return
+                    }
+
+                    if (mounted) {
+                        setProfile(profile)
+                        setLoading(false)
+                    }
+                }
+            } catch (err) {
+                console.error('Auth error:', err)
+                if (mounted) {
+                    // On any error, redirect to sign in
+                    router.replace('/auth/signin')
+                }
+            }
+        }
+
+        // Initial auth check
+        checkAuth()
+
+        // Subscribe to auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_OUT') {
+                if (mounted) {
+                    router.replace('/auth/signin')
+                }
+            } else if (event === 'SIGNED_IN' && session) {
+                if (mounted) {
+                    setSession(session)
+                    // Fetch profile after sign in
+                    const { data: profile } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single()
+
+                    if (mounted) {
+                        setProfile(profile)
+                        setLoading(false)
+                    }
+                }
+            }
+        })
+
+        // Cleanup function
+        return () => {
+            mounted = false
+            subscription.unsubscribe()
+        }
+    }, [])
+
+    // If loading, show loading state
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex flex-col justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto"></div>
+                    <p className="mt-4 text-gray-500">Loading your dashboard...</p>
+                </div>
+            </div>
+        )
+    }
+
+    // If no session or profile, redirect to sign in
+    if (!session?.user || !profile) {
+        router.replace('/auth/signin')
+        return null
+    }
+
     const handleSignOut = async () => {
         try {
             setIsSigningOut(true)
-            // Start the sign out process but don't wait for redirect
-            await signOut({ redirect: false })
-            // Use client-side navigation for a smoother transition
+            const { error } = await supabase.auth.signOut()
+            if (error) throw error
             router.push('/')
         } catch (error) {
             console.error('Error signing out:', error)
@@ -32,45 +133,32 @@ export default function Dashboard() {
             setIsUpgrading(true)
             setUpgradeError('')
 
-            const response = await fetch('/api/user/upgrade-to-mentor', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
+            // Update user role to MENTOR
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({ role: 'MENTOR' })
+                .eq('id', session.user.id)
 
-            const data = await response.json()
+            if (updateError) throw updateError
 
-            if (response.ok) {
-                // Update the session to reflect the new role
-                await updateSession()
-                // Redirect to mentor profile setup with a return URL to the schedule page
-                router.push('/mentor/profile-setup?returnUrl=/schedule')
-            } else {
-                setUpgradeError(data.message || 'Failed to upgrade to mentor status')
-            }
+            // Refresh profile data
+            const { data: updatedProfile, error: profileError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', session.user.id)
+                .single()
+
+            if (profileError) throw profileError
+            setProfile(updatedProfile)
+
+            // Redirect to mentor profile setup
+            router.push('/mentor/profile-setup?returnUrl=/schedule')
         } catch (error) {
             console.error('Error upgrading to mentor:', error)
-            setUpgradeError('An unexpected error occurred')
+            setUpgradeError('Failed to upgrade to mentor status')
         } finally {
             setIsUpgrading(false)
         }
-    }
-
-    useEffect(() => {
-        if (status === 'unauthenticated') {
-            router.push('/auth/signin')
-        }
-    }, [status, router])
-
-    if (status === 'loading') {
-        return (
-            <div className="min-h-screen bg-gray-50 flex flex-col justify-center">
-                <div className="text-center">
-                    <p className="text-gray-500">Loading...</p>
-                </div>
-            </div>
-        )
     }
 
     return (
@@ -78,7 +166,7 @@ export default function Dashboard() {
             <AutoLogout />
             <div className="max-w-7xl mx-auto">
                 {/* Profile Completion Alert */}
-                {!session?.user?.isProfileComplete && (
+                {!profile?.is_profile_complete && (
                     <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
                         <div className="flex">
                             <div className="flex-shrink-0">
@@ -105,10 +193,10 @@ export default function Dashboard() {
                 <div className="bg-white shadow rounded-lg p-6 mb-6">
                     <div className="flex items-center">
                         <div className="h-20 w-20 relative rounded-full overflow-hidden bg-gray-100">
-                            {session?.user?.image ? (
+                            {profile?.image_url ? (
                                 <Image
-                                    src={session.user.image}
-                                    alt={session.user.name || 'Profile'}
+                                    src={profile.image_url}
+                                    alt={profile.first_name || 'Profile'}
                                     fill
                                     className="object-cover"
                                 />
@@ -120,13 +208,12 @@ export default function Dashboard() {
                         </div>
                         <div className="ml-6">
                             <h1 className="text-2xl font-bold text-gray-900">
-                                Welcome back, {session?.user?.name || 'User'}!
+                                Welcome back, {profile?.first_name || 'User'}!
                             </h1>
                             <p className="text-gray-600">{session?.user?.email}</p>
                             {/* Display role badge */}
-                            <span className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${session?.user?.role === 'MENTOR' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                                }`}>
-                                {session?.user?.role === 'MENTOR' ? 'Mentor' : 'User'}
+                            <span className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${profile?.role === 'MENTOR' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                                {profile?.role === 'MENTOR' ? 'Mentor' : 'User'}
                             </span>
                         </div>
                     </div>
@@ -200,7 +287,7 @@ export default function Dashboard() {
                             </button>
 
                             {/* Mentor Upgrade Button - only show if user is not already a mentor */}
-                            {session?.user?.role !== 'MENTOR' && (
+                            {profile?.role !== 'MENTOR' && (
                                 <button
                                     onClick={handleUpgradeToMentor}
                                     disabled={isUpgrading}
