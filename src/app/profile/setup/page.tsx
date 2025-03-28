@@ -32,7 +32,7 @@ export default function ProfileSetup() {
 
                 // Get existing profile data
                 const { data: profile, error: profileError } = await supabase
-                    .from('users')
+                    .from('mentees')
                     .select('*')
                     .eq('id', session.user.id)
                     .single()
@@ -94,9 +94,9 @@ export default function ProfileSetup() {
         }
 
         try {
-            // First, ensure the user exists in the users table
+            // First, ensure the user exists in the mentees table
             const { data: existingUser, error: userCheckError } = await supabase
-                .from('users')
+                .from('mentees')
                 .select('id')
                 .eq('id', session.user.id)
                 .single()
@@ -105,13 +105,12 @@ export default function ProfileSetup() {
                 console.error('Error checking user:', userCheckError)
                 // If user doesn't exist, create them
                 const { error: insertError } = await supabase
-                    .from('users')
+                    .from('mentees')
                     .insert({
                         id: session.user.id,
                         email: session.user.email,
                         first_name: session.user.user_metadata?.first_name || '',
                         last_name: session.user.user_metadata?.last_name || '',
-                        role: 'USER'
                     })
 
                 if (insertError) {
@@ -163,7 +162,7 @@ export default function ProfileSetup() {
 
             // Try updating without phone number first
             let { error: updateError } = await supabase
-                .from('users')
+                .from('mentees')
                 .update(updateData)
                 .eq('id', session.user.id)
 
@@ -182,7 +181,7 @@ export default function ProfileSetup() {
                 if (formData.phoneNumber) {
                     updateData.phone_number = formData.phoneNumber
                     const { error: retryError } = await supabase
-                        .from('users')
+                        .from('mentees')
                         .update(updateData)
                         .eq('id', session.user.id)
 

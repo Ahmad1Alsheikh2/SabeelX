@@ -17,23 +17,32 @@ export async function GET(request: NextRequest) {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (user) {
-            // Check if user exists in our users table
-            const { data: profile } = await supabase
-                .from('users')
+            // Check if user exists in either mentors or mentees table
+            const { data: mentorProfile } = await supabase
+                .from('mentors')
                 .select('*')
                 .eq('id', user.id)
                 .single();
 
-            if (!profile) {
-                // Create new user profile
+            const { data: menteeProfile } = await supabase
+                .from('mentees')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+
+            if (!mentorProfile && !menteeProfile) {
+                // Get the user's role from metadata
+                const role = user.user_metadata?.role || 'MENTEE';
+                const tableName = role === 'MENTOR' ? 'mentors' : 'mentees';
+
+                // Create new user profile in the appropriate table
                 const { error: insertError } = await supabase
-                    .from('users')
+                    .from(tableName)
                     .insert({
                         id: user.id,
                         email: user.email,
                         first_name: user.user_metadata?.first_name || '',
                         last_name: user.user_metadata?.last_name || '',
-                        image_url: user.user_metadata?.avatar_url,
                         is_profile_complete: false
                     });
 
@@ -44,17 +53,26 @@ export async function GET(request: NextRequest) {
                     );
                 }
 
-                // Redirect to profile setup
-                return NextResponse.redirect(`${requestUrl.origin}/profile/setup`);
+                // Redirect to appropriate profile setup
+                return NextResponse.redirect(
+                    role === 'MENTOR'
+                        ? `${requestUrl.origin}/mentor/profile-setup`
+                        : `${requestUrl.origin}/profile/setup`
+                );
             }
 
-            // Redirect based on profile completion
+            // Redirect based on profile completion and role
+            const profile = mentorProfile || menteeProfile;
+            const isMentor = !!mentorProfile;
+
             if (profile.is_profile_complete) {
                 return NextResponse.redirect(`${requestUrl.origin}/dashboard`);
-            } else if (profile.role === 'MENTOR') {
-                return NextResponse.redirect(`${requestUrl.origin}/mentor/profile-setup`);
             } else {
-                return NextResponse.redirect(`${requestUrl.origin}/profile/setup`);
+                return NextResponse.redirect(
+                    isMentor
+                        ? `${requestUrl.origin}/mentor/profile-setup`
+                        : `${requestUrl.origin}/profile/setup`
+                );
             }
         }
     }

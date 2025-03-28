@@ -8,19 +8,37 @@ import { supabase } from '@/lib/supabase'
 export default function Navbar() {
   const [session, setSession] = useState<any>(null)
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-    })
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
 
-    // Listen for auth changes
+        if (error) {
+          console.error('Session error:', error)
+          setSession(null)
+        } else {
+          setSession(session)
+        }
+      } catch (err) {
+        console.error('Error checking session:', err)
+        setSession(null)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    checkSession()
+
+    // Listen for auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
+      setIsLoading(false)
     })
 
     return () => subscription.unsubscribe()
@@ -31,12 +49,31 @@ export default function Navbar() {
       setIsSigningOut(true)
       const { error } = await supabase.auth.signOut()
       if (error) throw error
+      setSession(null)
       router.push('/')
+      router.refresh()
     } catch (error) {
       console.error('Error signing out:', error)
     } finally {
       setIsSigningOut(false)
     }
+  }
+
+  if (isLoading) {
+    return (
+      <nav className="bg-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div>
+            </div>
+            <div className="flex items-center">
+              <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </nav>
+    )
   }
 
   return (
@@ -65,7 +102,7 @@ export default function Navbar() {
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">
-            {session ? (
+            {session?.user ? (
               <>
                 <Link
                   href="/dashboard"

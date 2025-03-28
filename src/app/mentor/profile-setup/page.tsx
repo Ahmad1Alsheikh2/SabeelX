@@ -64,23 +64,50 @@ export default function MentorProfileSetup() {
         setIsSubmitting(true)
 
         try {
+            // Validate that at least one expertise category is selected
+            if (formData.expertiseCategories.length === 0) {
+                setError('Please select at least one area of expertise')
+                return
+            }
+
+            // Validate that at least one focus area is selected
+            if (formData.focusAreas.length === 0) {
+                setError('Please select at least one focus area')
+                return
+            }
+
             const response = await fetch('/api/mentor/profile', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    ...formData,
-                    expertise: formData.focusAreas
+                    title: formData.title,
+                    company: formData.company,
+                    expertise: formData.focusAreas,
+                    bio: formData.bio,
+                    hourlyRate: formData.hourlyRate,
+                    availability: formData.availability,
+                    country: formData.country,
+                    experience: formData.experience,
+                    image: formData.image
                 }),
             })
 
+            const data = await response.json()
+
             if (response.ok) {
-                await update({ profileCompleted: true })
-                router.push('/dashboard')
+                // Redirect to mentor dashboard
+                router.push('/mentor/dashboard')
             } else {
-                const data = await response.json()
-                setError(data.details || data.message || 'Something went wrong')
+                if (response.status === 401) {
+                    // If unauthorized, redirect to sign in
+                    router.push('/auth/signin')
+                } else if (response.status === 403) {
+                    setError('You are not authorized to access this page. Please sign up as a mentor first.')
+                } else {
+                    setError(data.details || data.message || 'An error occurred while updating your profile')
+                }
             }
         } catch (err) {
             console.error('Profile update error:', err)

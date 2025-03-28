@@ -12,8 +12,6 @@ export default function Dashboard() {
     const [profile, setProfile] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [isSigningOut, setIsSigningOut] = useState(false)
-    const [isUpgrading, setIsUpgrading] = useState(false)
-    const [upgradeError, setUpgradeError] = useState('')
 
     useEffect(() => {
         let mounted = true
@@ -35,14 +33,22 @@ export default function Dashboard() {
                     setSession(session)
 
                     // Get user profile
-                    const { data: profile, error: profileError } = await supabase
-                        .from('users')
+                    const { data: mentorProfile } = await supabase
+                        .from('mentors')
                         .select('*')
                         .eq('id', session.user.id)
-                        .single()
+                        .single();
 
-                    if (profileError) {
-                        console.error('Error fetching profile:', profileError)
+                    const { data: menteeProfile } = await supabase
+                        .from('mentees')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single();
+
+                    const profile = mentorProfile || menteeProfile;
+
+                    if (!profile) {
+                        console.error('No profile found')
                         // If we can't get the profile, sign out and redirect
                         await supabase.auth.signOut()
                         router.replace('/auth/signin')
@@ -76,11 +82,19 @@ export default function Dashboard() {
                 if (mounted) {
                     setSession(session)
                     // Fetch profile after sign in
-                    const { data: profile } = await supabase
-                        .from('users')
+                    const { data: mentorProfile } = await supabase
+                        .from('mentors')
                         .select('*')
                         .eq('id', session.user.id)
-                        .single()
+                        .single();
+
+                    const { data: menteeProfile } = await supabase
+                        .from('mentees')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single();
+
+                    const profile = mentorProfile || menteeProfile;
 
                     if (mounted) {
                         setProfile(profile)
@@ -125,39 +139,6 @@ export default function Dashboard() {
             console.error('Error signing out:', error)
         } finally {
             setIsSigningOut(false)
-        }
-    }
-
-    const handleUpgradeToMentor = async () => {
-        try {
-            setIsUpgrading(true)
-            setUpgradeError('')
-
-            // Update user role to MENTOR
-            const { error: updateError } = await supabase
-                .from('users')
-                .update({ role: 'MENTOR' })
-                .eq('id', session.user.id)
-
-            if (updateError) throw updateError
-
-            // Refresh profile data
-            const { data: updatedProfile, error: profileError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', session.user.id)
-                .single()
-
-            if (profileError) throw profileError
-            setProfile(updatedProfile)
-
-            // Redirect to mentor profile setup
-            router.push('/mentor/profile-setup?returnUrl=/schedule')
-        } catch (error) {
-            console.error('Error upgrading to mentor:', error)
-            setUpgradeError('Failed to upgrade to mentor status')
-        } finally {
-            setIsUpgrading(false)
         }
     }
 
@@ -213,7 +194,7 @@ export default function Dashboard() {
                             <p className="text-gray-600">{session?.user?.email}</p>
                             {/* Display role badge */}
                             <span className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${profile?.role === 'MENTOR' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
-                                {profile?.role === 'MENTOR' ? 'Mentor' : 'User'}
+                                {profile?.role === 'MENTOR' ? 'Mentor' : 'Mentee'}
                             </span>
                         </div>
                     </div>
@@ -286,28 +267,13 @@ export default function Dashboard() {
                                 Edit Profile
                             </button>
 
-                            {/* Mentor Upgrade Button - only show if user is not already a mentor */}
-                            {profile?.role !== 'MENTOR' && (
-                                <button
-                                    onClick={handleUpgradeToMentor}
-                                    disabled={isUpgrading}
-                                    className="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isUpgrading ? 'Upgrading...' : 'Become a Mentor'}
-                                </button>
-                            )}
-
-                            {/* Show error if upgrade fails */}
-                            {upgradeError && (
-                                <div className="text-sm text-red-600">{upgradeError}</div>
-                            )}
-
                             <button
                                 onClick={() => router.push('/mentors')}
                                 className="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                             >
                                 Browse Mentors
                             </button>
+
                             <button
                                 onClick={() => router.push('/settings')}
                                 className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"

@@ -1,24 +1,30 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import prisma from '@/lib/prisma'
-import { authOptions } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 
 export async function PUT(request: Request) {
     try {
-        const session = await getServerSession(authOptions)
+        const cookieStore = cookies()
+        const supabase = createClient(cookieStore)
 
-        if (!session?.user?.email) {
+        // Get the current user's session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+        if (sessionError || !session?.user?.id) {
+            console.error('Session error:', sessionError)
             return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
         }
 
-        // First get the user ID using the email from the session
-        const user = await prisma.user.findUnique({
-            where: { email: session.user.email },
-            select: { id: true }
-        })
+        // Verify the user is a mentor
+        const { data: mentorProfile, error: mentorError } = await supabase
+            .from('mentors')
+            .select('id')
+            .eq('id', session.user.id)
+            .single()
 
-        if (!user) {
-            return NextResponse.json({ message: 'User not found' }, { status: 404 })
+        if (mentorError || !mentorProfile) {
+            console.error('Mentor verification error:', mentorError)
+            return NextResponse.json({ message: 'User is not a mentor' }, { status: 403 })
         }
 
         const body = await request.json()
@@ -64,48 +70,44 @@ export async function PUT(request: Request) {
             )
         }
 
-        console.log('Updating user profile with:', {
-            userId: user.id,
-            expertise: Array.isArray(expertise) ? expertise : [expertise]
-        })
-
-        // Update user profile
-        const updatedUser = await prisma.user.update({
-            where: {
-                id: user.id
-            },
-            data: {
+        // Update mentor profile
+        const { data: updatedProfile, error: updateError } = await supabase
+            .from('mentors')
+            .update({
                 title,
                 company,
                 expertise: Array.isArray(expertise) ? expertise : [expertise],
                 bio,
-                hourlyRate: hourlyRate ? Number(hourlyRate) : null,
+                hourly_rate: hourlyRate ? Number(hourlyRate) : null,
                 availability: availability ? Number(availability) : null,
                 country,
                 experience: Number(experience),
                 image,
-                isProfileComplete: true
-            }
-        })
+                is_profile_complete: true
+            })
+            .eq('id', session.user.id)
+            .select()
+            .single()
+
+        if (updateError) {
+            console.error('Profile update error:', updateError)
+            return NextResponse.json(
+                { message: 'Failed to update profile', details: updateError.message },
+                { status: 500 }
+            )
+        }
 
         return NextResponse.json({
             message: 'Profile updated successfully',
             user: {
-                id: updatedUser.id,
-                email: updatedUser.email
+                id: updatedProfile.id,
+                email: updatedProfile.email
             }
         })
     } catch (error: any) {
-        console.error('Profile update error:', {
-            error: error.message,
-            stack: error.stack,
-            cause: error.cause
-        })
+        console.error('Profile update error:', error)
         return NextResponse.json(
-            {
-                message: 'Error updating profile',
-                details: process.env.NODE_ENV === 'development' ? error.message : undefined
-            },
+            { message: 'An error occurred while updating your profile', details: error.message },
             { status: 500 }
         )
     }
