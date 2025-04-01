@@ -37,7 +37,10 @@ export default function ProfileSetup() {
                     .eq('id', session.user.id)
                     .single()
 
-                if (profileError) throw profileError
+                // Only log errors, don't show them to the user during initial load
+                if (profileError && !profileError.message.includes('No rows found')) {
+                    console.error('Error loading profile:', profileError)
+                }
 
                 if (profile) {
                     setFormData(prev => ({
@@ -46,9 +49,11 @@ export default function ProfileSetup() {
                         phoneNumber: profile.phone_number || '',
                     }))
                 }
-            } catch (err) {
-                console.error('Error loading profile:', err)
-                setError('Failed to load profile data')
+            } catch (err: any) {
+                // Only log errors, don't show them to the user during initial load
+                if (!err.message?.includes('No rows found')) {
+                    console.error('Error loading profile:', err)
+                }
             } finally {
                 setLoading(false)
             }
