@@ -10,30 +10,52 @@ export async function GET(request: NextRequest) {
     if (code) {
         const supabase = createRouteHandlerClient({ cookies });
 
-        // Exchange the code for a session
-        await supabase.auth.exchangeCodeForSession(code);
+        try {
+            // Exchange the code for a session
+            const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
+            if (sessionError) {
+                console.error('Session exchange error:', sessionError);
+                return NextResponse.redirect(`${requestUrl.origin}/auth/signin?error=session_error`);
+            }
 
-        // Get the user
-        const { data: { user } } = await supabase.auth.getUser();
+            // Get the user
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) {
+                console.error('User fetch error:', userError);
+                return NextResponse.redirect(`${requestUrl.origin}/auth/signin?error=user_fetch_error`);
+            }
 
-        if (user) {
             // Check if user exists in either mentors or mentees table
-            const { data: mentorProfile } = await supabase
+            const { data: mentorProfile, error: mentorError } = await supabase
                 .from('mentors')
                 .select('*')
                 .eq('id', user.id)
                 .single();
 
-            const { data: menteeProfile } = await supabase
+            const { data: menteeProfile, error: menteeError } = await supabase
                 .from('mentees')
                 .select('*')
                 .eq('id', user.id)
                 .single();
 
+            if (mentorError && !mentorError.message.includes('No rows found')) {
+                console.error('Mentor profile check error:', mentorError);
+            }
+            if (menteeError && !menteeError.message.includes('No rows found')) {
+                console.error('Mentee profile check error:', menteeError);
+            }
+
             if (!mentorProfile && !menteeProfile) {
                 // Get the user's role from metadata
                 const role = user.user_metadata?.role || 'MENTEE';
                 const tableName = role === 'MENTOR' ? 'mentors' : 'mentees';
+
+                console.log('Creating profile for user:', {
+                    id: user.id,
+                    email: user.email,
+                    role,
+                    tableName
+                });
 
                 // Create new user profile in the appropriate table
                 const { error: insertError } = await supabase
@@ -49,7 +71,7 @@ export async function GET(request: NextRequest) {
                 if (insertError) {
                     console.error('Error creating user profile:', insertError);
                     return NextResponse.redirect(
-                        `${requestUrl.origin}/auth/signin?error=profile_creation_failed`
+                        `${requestUrl.origin}/auth/signin?error=profile_creation_failed&details=${encodeURIComponent(insertError.message)}`
                     );
                 }
 
@@ -74,6 +96,9 @@ export async function GET(request: NextRequest) {
                         : `${requestUrl.origin}/profile/setup`
                 );
             }
+        } catch (error) {
+            console.error('Unexpected error in callback:', error);
+            return NextResponse.redirect(`${requestUrl.origin}/auth/signin?error=callback_error`);
         }
     }
 

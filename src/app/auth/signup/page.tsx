@@ -98,23 +98,6 @@ export default function SignUp() {
         throw new Error('No user data returned after signup')
       }
 
-      // Create user in the appropriate table based on role
-      const tableName = activeTab === 'MENTOR' ? 'mentors' : 'mentees'
-      const { error: insertError } = await supabase
-        .from(tableName)
-        .insert({
-          id: authData.user.id,
-          email: formData.email,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          is_profile_complete: false
-        })
-
-      if (insertError) {
-        console.error('Error creating profile:', insertError)
-        throw new Error('Failed to create user profile')
-      }
-
       // Show success message
       setShowSuccessMessage(true)
     } catch (err) {
