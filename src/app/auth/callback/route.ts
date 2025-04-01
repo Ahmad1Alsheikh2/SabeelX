@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
                         email: user.email,
                         first_name: user.user_metadata?.first_name || '',
                         last_name: user.user_metadata?.last_name || '',
-                        is_profile_complete: false
+                        is_profile_complete: false,
+                        role: role // Add role to the profile
                     });
 
                 if (insertError) {
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
                     );
                 }
 
-                // Redirect to appropriate profile setup
+                // Redirect to appropriate profile setup based on role
                 return NextResponse.redirect(
                     role === 'MENTOR'
                         ? `${requestUrl.origin}/mentor/profile-setup`
@@ -86,12 +87,17 @@ export async function GET(request: NextRequest) {
             // Redirect based on profile completion and role
             const profile = mentorProfile || menteeProfile;
             const isMentor = !!mentorProfile;
+            const role = isMentor ? 'MENTOR' : 'MENTEE';
 
             if (profile.is_profile_complete) {
-                return NextResponse.redirect(`${requestUrl.origin}/dashboard`);
+                return NextResponse.redirect(
+                    role === 'MENTOR'
+                        ? `${requestUrl.origin}/mentor/dashboard`
+                        : `${requestUrl.origin}/dashboard`
+                );
             } else {
                 return NextResponse.redirect(
-                    isMentor
+                    role === 'MENTOR'
                         ? `${requestUrl.origin}/mentor/profile-setup`
                         : `${requestUrl.origin}/profile/setup`
                 );

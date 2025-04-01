@@ -1,0 +1,22 @@
+export const universities = [
+    'Harvard University',
+    'Stanford University',
+    'Massachusetts Institute of Technology (MIT)',
+    'California Institute of Technology (Caltech)',
+    'Princeton University',
+    'Yale University',
+    'Columbia University',
+    'University of Pennsylvania',
+    'Duke University',
+    'Johns Hopkins University',
+    'Northwestern University',
+    'University of Chicago',
+    'Brown University',
+    'Cornell University',
+    'University of Michigan',
+    'University of California, Berkeley',
+    'University of California, Los Angeles (UCLA)',
+    'University of Virginia',
+    'Carnegie Mellon University',
+    'University of Texas at Austin'
+]; 

@@ -29,19 +29,32 @@ export default function SignIn() {
         .eq('id', userId)
         .single()
 
-      const profile = mentorProfile || menteeProfile
+      // Get user metadata to determine role
+      const { data: { user } } = await supabase.auth.getUser()
+      const userRole = user?.user_metadata?.role || 'MENTEE'
 
-      if (profile) {
-        if (profile.is_profile_complete) {
-          router.replace('/dashboard')
-        } else if (mentorProfile) {
-          router.replace('/mentor/profile-setup')
+      if (userRole === 'MENTOR') {
+        if (mentorProfile) {
+          if (mentorProfile.is_profile_complete) {
+            router.replace('/mentor/dashboard')
+          } else {
+            router.replace('/mentor/profile-setup')
+          }
         } else {
-          router.replace('/profile/setup')
+          // If no mentor profile exists, redirect to mentor profile setup
+          router.replace('/mentor/profile-setup')
         }
       } else {
-        // If no profile exists yet, redirect to profile setup
-        router.replace('/profile/setup')
+        if (menteeProfile) {
+          if (menteeProfile.is_profile_complete) {
+            router.replace('/dashboard')
+          } else {
+            router.replace('/profile/setup')
+          }
+        } else {
+          // If no mentee profile exists, redirect to mentee profile setup
+          router.replace('/profile/setup')
+        }
       }
     } catch (err) {
       console.error('Error checking profile:', err)

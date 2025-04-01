@@ -29,19 +29,17 @@ export async function PUT(request: Request) {
 
         const body = await request.json()
         const {
-            title,
-            company,
+            university,
             expertise,
             bio,
             hourlyRate,
-            availability,
             country,
             experience,
             image
         } = body
 
         // Validate required fields
-        if (!title || !company || !expertise || !bio || !country || !experience) {
+        if (!university || !expertise || !bio || !country || !experience) {
             return NextResponse.json(
                 { message: 'Missing required fields' },
                 { status: 400 }
@@ -52,13 +50,6 @@ export async function PUT(request: Request) {
         if (hourlyRate && isNaN(Number(hourlyRate))) {
             return NextResponse.json(
                 { message: 'Hourly rate must be a number' },
-                { status: 400 }
-            )
-        }
-
-        if (availability && isNaN(Number(availability))) {
-            return NextResponse.json(
-                { message: 'Availability must be a number' },
                 { status: 400 }
             )
         }
@@ -74,12 +65,10 @@ export async function PUT(request: Request) {
         const { data: updatedProfile, error: updateError } = await supabase
             .from('mentors')
             .update({
-                title,
-                company,
+                university,
                 expertise: Array.isArray(expertise) ? expertise : [expertise],
                 bio,
                 hourly_rate: hourlyRate ? Number(hourlyRate) : null,
-                availability: availability ? Number(availability) : null,
                 country,
                 experience: Number(experience),
                 image,

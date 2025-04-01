@@ -4,22 +4,20 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { countries } from '@/lib/countries'
-import { expertiseCategories } from '@/lib/expertise-categories'
+import { universities } from '@/lib/universities'
+import { admissionsServices } from '@/lib/admissions-services'
 
 export default function MentorProfileSetup() {
     const router = useRouter()
     const { data: session, update } = useSession()
     const [formData, setFormData] = useState({
-        title: '',
-        company: '',
-        expertise: '',
+        university: '',
         bio: '',
         hourlyRate: '',
-        availability: '',
         country: '',
         experience: '',
         image: '',
-        expertiseCategories: [] as string[],
+        serviceCategories: [] as string[],
         focusAreas: [] as string[]
     })
     const [selectedCategory, setSelectedCategory] = useState('')
@@ -28,21 +26,21 @@ export default function MentorProfileSetup() {
 
     const handleCategoryChange = (category: string) => {
         setSelectedCategory(category);
-        if (formData.expertiseCategories.includes(category)) {
+        if (formData.serviceCategories.includes(category)) {
             // Remove the category and its associated focus areas
             const updatedFocusAreas = formData.focusAreas.filter(area =>
-                !expertiseCategories.find(cat => cat.name === category)?.focusAreas.includes(area)
+                !admissionsServices.find(cat => cat.name === category)?.focusAreas.includes(area)
             );
             setFormData(prev => ({
                 ...prev,
-                expertiseCategories: prev.expertiseCategories.filter(cat => cat !== category),
+                serviceCategories: prev.serviceCategories.filter(cat => cat !== category),
                 focusAreas: updatedFocusAreas
             }));
         } else {
             // Add the category
             setFormData(prev => ({
                 ...prev,
-                expertiseCategories: [...prev.expertiseCategories, category]
+                serviceCategories: [...prev.serviceCategories, category]
             }));
         }
     };
@@ -64,9 +62,9 @@ export default function MentorProfileSetup() {
         setIsSubmitting(true)
 
         try {
-            // Validate that at least one expertise category is selected
-            if (formData.expertiseCategories.length === 0) {
-                setError('Please select at least one area of expertise')
+            // Validate that at least one service category is selected
+            if (formData.serviceCategories.length === 0) {
+                setError('Please select at least one admissions service')
                 return
             }
 
@@ -82,12 +80,10 @@ export default function MentorProfileSetup() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    title: formData.title,
-                    company: formData.company,
+                    university: formData.university,
                     expertise: formData.focusAreas,
                     bio: formData.bio,
                     hourlyRate: formData.hourlyRate,
-                    availability: formData.availability,
                     country: formData.country,
                     experience: formData.experience,
                     image: formData.image
@@ -125,7 +121,7 @@ export default function MentorProfileSetup() {
                         Complete Your Mentor Profile
                     </h2>
                     <p className="mt-2 text-lg text-gray-600">
-                        Share your expertise and help others grow in their careers
+                        Share your expertise and help others with their admissions journey
                     </p>
                 </div>
 
@@ -136,36 +132,25 @@ export default function MentorProfileSetup() {
                             <h3 className="text-lg font-medium leading-6 text-gray-900">Professional Information</h3>
                             <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                                 <div className="sm:col-span-3">
-                                    <label htmlFor="company" className="block text-sm font-medium text-gray-700">
-                                        Current Company
+                                    <label htmlFor="university" className="block text-sm font-medium text-gray-700">
+                                        University
                                     </label>
                                     <div className="mt-1">
-                                        <input
-                                            type="text"
-                                            name="company"
-                                            id="company"
+                                        <select
+                                            name="university"
+                                            id="university"
                                             required
                                             className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                                            value={formData.company}
-                                            onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="sm:col-span-3">
-                                    <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-                                        Job Title
-                                    </label>
-                                    <div className="mt-1">
-                                        <input
-                                            type="text"
-                                            name="title"
-                                            id="title"
-                                            required
-                                            className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                                            value={formData.title}
-                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                        />
+                                            value={formData.university}
+                                            onChange={(e) => setFormData({ ...formData, university: e.target.value })}
+                                        >
+                                            <option value="">Select your university</option>
+                                            {universities.map((university) => (
+                                                <option key={university} value={university}>
+                                                    {university}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
 
@@ -210,19 +195,19 @@ export default function MentorProfileSetup() {
                                     </div>
                                 </div>
 
-                                {/* Expertise Categories */}
+                                {/* Admissions Services */}
                                 <div className="sm:col-span-6">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Areas of Expertise
+                                        Admissions Services
                                     </label>
                                     <div className="space-y-4">
-                                        <div className="grid grid-cols-3 gap-4">
-                                            {expertiseCategories.map((category) => (
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {admissionsServices.map((category) => (
                                                 <div key={category.name} className="flex items-center">
                                                     <input
                                                         type="checkbox"
                                                         id={category.name}
-                                                        checked={formData.expertiseCategories.includes(category.name)}
+                                                        checked={formData.serviceCategories.includes(category.name)}
                                                         onChange={() => handleCategoryChange(category.name)}
                                                         className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
                                                     />
@@ -236,13 +221,13 @@ export default function MentorProfileSetup() {
                                             ))}
                                         </div>
 
-                                        {formData.expertiseCategories.length > 0 && (
+                                        {formData.serviceCategories.length > 0 && (
                                             <div className="mt-4">
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                                     Select Focus Areas
                                                 </label>
-                                                {expertiseCategories
-                                                    .filter(category => formData.expertiseCategories.includes(category.name))
+                                                {admissionsServices
+                                                    .filter(category => formData.serviceCategories.includes(category.name))
                                                     .map(category => (
                                                         <div key={category.name} className="mb-6">
                                                             <h4 className="font-medium text-gray-700 mb-2">{category.name}</h4>
@@ -282,7 +267,7 @@ export default function MentorProfileSetup() {
                                             rows={4}
                                             required
                                             className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                                            placeholder="Tell us about your experience and what you can offer as a mentor"
+                                            placeholder="Tell us about your experience and what you can offer as an admissions mentor"
                                             value={formData.bio}
                                             onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                                         />
@@ -310,26 +295,6 @@ export default function MentorProfileSetup() {
                                             placeholder="e.g., 100"
                                             value={formData.hourlyRate}
                                             onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="sm:col-span-3">
-                                    <label htmlFor="availability" className="block text-sm font-medium text-gray-700">
-                                        Weekly Availability (hours)
-                                    </label>
-                                    <div className="mt-1">
-                                        <input
-                                            type="number"
-                                            name="availability"
-                                            id="availability"
-                                            required
-                                            min="1"
-                                            max="168"
-                                            className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                                            placeholder="e.g., 10"
-                                            value={formData.availability}
-                                            onChange={(e) => setFormData({ ...formData, availability: e.target.value })}
                                         />
                                     </div>
                                 </div>
