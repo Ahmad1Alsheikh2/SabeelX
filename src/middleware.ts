@@ -41,26 +41,36 @@ export async function middleware(request: NextRequest) {
     const isProfileComplete = token.isProfileComplete as boolean
     const role = token.role as string
 
-    // For mentors with incomplete profiles, always redirect to profile setup, even from dashboard
+    // For mentors with incomplete profiles, always redirect to mentor profile setup
     if (role === 'MENTOR' && !isProfileComplete) {
-        // Only if they're not already on the profile setup page
+        // Only if they're not already on the mentor profile setup page
         if (!pathname.startsWith('/mentor/profile-setup')) {
             return NextResponse.redirect(new URL('/mentor/profile-setup', request.url))
         }
     }
 
-    // For users with complete profiles or non-mentors, allow access to dashboard and profile setup
-    if (profileSetupPaths.some(path => pathname.startsWith(path)) || 
-        dashboardPaths.some(path => pathname.startsWith(path))) {
-        return NextResponse.next()
+    // For mentees with incomplete profiles, always redirect to mentee profile setup
+    if (role === 'MENTEE' && !isProfileComplete) {
+        // Only if they're not already on the mentee profile setup page
+        if (!pathname.startsWith('/profile/setup')) {
+            return NextResponse.redirect(new URL('/profile/setup', request.url))
+        }
     }
 
-    // For other users (non-mentors) with incomplete profiles
-    if (!isProfileComplete) {
-        const setupPath = role === 'MENTOR' ? '/mentor/profile-setup' : '/profile/setup'
-        if (!pathname.startsWith(setupPath)) {
-            return NextResponse.redirect(new URL(setupPath, request.url))
+    // For users with complete profiles, allow access to appropriate dashboard
+    if (isProfileComplete) {
+        if (role === 'MENTOR' && pathname.startsWith('/dashboard')) {
+            return NextResponse.redirect(new URL('/mentor/dashboard', request.url))
         }
+        if (role === 'MENTEE' && pathname.startsWith('/mentor/dashboard')) {
+            return NextResponse.redirect(new URL('/dashboard', request.url))
+        }
+    }
+
+    // Allow access to profile setup pages and appropriate dashboard
+    if (profileSetupPaths.some(path => pathname.startsWith(path)) ||
+        dashboardPaths.some(path => pathname.startsWith(path))) {
+        return NextResponse.next()
     }
 
     return NextResponse.next()
