@@ -1,21 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { supabase } from '@/lib/supabase'
 import { countries } from '@/lib/countries'
 import { universities } from '@/lib/universities'
 import { admissionsServices } from '@/lib/admissions-services'
 
 export default function MentorProfileSetup() {
     const router = useRouter()
-    const { data: session, update } = useSession()
+    const [session, setSession] = useState<any>(null)
     const [formData, setFormData] = useState({
         university: '',
         bio: '',
         hourlyRate: '',
         country: '',
-        experience: '',
+        years_of_experience: '',
         image: '',
         serviceCategories: [] as string[],
         focusAreas: [] as string[]
@@ -23,6 +23,53 @@ export default function MentorProfileSetup() {
     const [selectedCategory, setSelectedCategory] = useState('')
     const [error, setError] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    useEffect(() => {
+        // Check authentication
+        const checkAuth = async () => {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession()
+                if (error) throw error
+
+                if (!session) {
+                    router.replace('/auth/signin')
+                    return
+                }
+
+                setSession(session)
+
+                // Get existing profile data
+                const { data: profile, error: profileError } = await supabase
+                    .from('mentors')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single()
+
+                // Only log errors, don't show them to the user during initial load
+                if (profileError && !profileError.message.includes('No rows found')) {
+                    console.error('Error loading profile:', profileError)
+                }
+
+                if (profile) {
+                    setFormData(prev => ({
+                        ...prev,
+                        university: profile.university || '',
+                        bio: profile.bio || '',
+                        hourlyRate: profile.hourly_rate?.toString() || '',
+                        country: profile.country || '',
+                        years_of_experience: profile.years_of_experience?.toString() || '',
+                        image: profile.image || '',
+                        focusAreas: profile.expertise || []
+                    }))
+                }
+            } catch (err) {
+                console.error('Error checking auth:', err)
+                router.replace('/auth/signin')
+            }
+        }
+
+        checkAuth()
+    }, [router])
 
     const handleCategoryChange = (category: string) => {
         setSelectedCategory(category);
@@ -65,49 +112,101 @@ export default function MentorProfileSetup() {
             // Validate that at least one service category is selected
             if (formData.serviceCategories.length === 0) {
                 setError('Please select at least one admissions service')
+                setIsSubmitting(false)
                 return
             }
 
             // Validate that at least one focus area is selected
             if (formData.focusAreas.length === 0) {
                 setError('Please select at least one focus area')
+                setIsSubmitting(false)
                 return
             }
 
-            const response = await fetch('/api/mentor/profile', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
+            if (!session?.user?.id) {
+                throw new Error('No authenticated user found')
+            }
+
+            console.log('Checking user profile for ID:', session.user.id)
+
+            // First, ensure the user exists in the mentors table
+            const { data: existingUsers, error: userCheckError } = await supabase
+                .from('mentors')
+                .select('*')
+                .eq('id', session.user.id)
+
+            if (userCheckError) {
+                console.error('Error checking user profile:', userCheckError)
+                throw new Error(`Failed to check user profile: ${userCheckError.message}`)
+            }
+
+            // Get the first user if multiple exist, or null if none exist
+            const existingUser = existingUsers?.[0]
+
+            // If user doesn't exist, create them
+            if (!existingUser) {
+                console.log('Creating new mentor profile for user:', session.user.id)
+                const { error: insertError } = await supabase
+                    .from('mentors')
+                    .insert({
+                        id: session.user.id,
+                        email: session.user.email,
+                        first_name: session.user.user_metadata?.first_name || '',
+                        last_name: session.user.user_metadata?.last_name || '',
+                        university: formData.university,
+                        expertise: formData.focusAreas,
+                        bio: formData.bio,
+                        hourly_rate: formData.hourlyRate ? Number(formData.hourlyRate) : null,
+                        country: formData.country,
+                        years_of_experience: Number(formData.years_of_experience),
+                        image: formData.image,
+                        is_profile_complete: true
+                    })
+
+                if (insertError) {
+                    console.error('Error creating user:', insertError)
+                    throw new Error(`Failed to create user profile: ${insertError.message}`)
+                }
+                console.log('Successfully created new mentor profile')
+            } else {
+                // Update mentor profile
+                console.log('Updating mentor profile with data:', {
                     university: formData.university,
                     expertise: formData.focusAreas,
                     bio: formData.bio,
-                    hourlyRate: formData.hourlyRate,
+                    hourly_rate: formData.hourlyRate ? Number(formData.hourlyRate) : null,
                     country: formData.country,
-                    experience: formData.experience,
-                    image: formData.image
-                }),
-            })
+                    years_of_experience: Number(formData.years_of_experience),
+                    image: formData.image,
+                    is_profile_complete: true
+                })
 
-            const data = await response.json()
+                const { error: updateError } = await supabase
+                    .from('mentors')
+                    .update({
+                        university: formData.university,
+                        expertise: formData.focusAreas,
+                        bio: formData.bio,
+                        hourly_rate: formData.hourlyRate ? Number(formData.hourlyRate) : null,
+                        country: formData.country,
+                        years_of_experience: Number(formData.years_of_experience),
+                        image: formData.image,
+                        is_profile_complete: true
+                    })
+                    .eq('id', session.user.id)
 
-            if (response.ok) {
-                // Redirect to mentor dashboard
-                router.push('/mentor/dashboard')
-            } else {
-                if (response.status === 401) {
-                    // If unauthorized, redirect to sign in
-                    router.push('/auth/signin')
-                } else if (response.status === 403) {
-                    setError('You are not authorized to access this page. Please sign up as a mentor first.')
-                } else {
-                    setError(data.details || data.message || 'An error occurred while updating your profile')
+                if (updateError) {
+                    console.error('Error updating profile:', updateError)
+                    throw new Error(`Failed to update profile: ${updateError.message}`)
                 }
             }
+
+            console.log('Successfully updated mentor profile, redirecting to dashboard')
+            // Redirect to mentor dashboard
+            router.replace('/mentor/dashboard')
         } catch (err) {
             console.error('Profile update error:', err)
-            setError('An error occurred while updating your profile')
+            setError(err instanceof Error ? err.message : 'An error occurred while updating your profile')
         } finally {
             setIsSubmitting(false)
         }
@@ -178,19 +277,19 @@ export default function MentorProfileSetup() {
                                 </div>
 
                                 <div className="sm:col-span-3">
-                                    <label htmlFor="experience" className="block text-sm font-medium text-gray-700">
+                                    <label htmlFor="years_of_experience" className="block text-sm font-medium text-gray-700">
                                         Years of Experience
                                     </label>
                                     <div className="mt-1">
                                         <input
                                             type="number"
-                                            name="experience"
-                                            id="experience"
+                                            name="years_of_experience"
+                                            id="years_of_experience"
                                             required
                                             min="0"
                                             className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                                            value={formData.experience}
-                                            onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+                                            value={formData.years_of_experience}
+                                            onChange={(e) => setFormData({ ...formData, years_of_experience: e.target.value })}
                                         />
                                     </div>
                                 </div>

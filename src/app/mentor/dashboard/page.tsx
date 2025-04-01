@@ -37,7 +37,7 @@ export default function MentorDashboard() {
                                 <p className="text-sm font-medium text-yellow-800">Complete your profile setup to start mentoring</p>
                                 <p className="mt-1 text-sm text-yellow-700">
                                     Your mentor profile needs to be complete before you can be visible to potential mentees.
-                                    <button 
+                                    <button
                                         onClick={() => router.push('/mentor/profile-setup')}
                                         className="ml-2 font-medium underline text-yellow-700 hover:text-yellow-600"
                                     >
