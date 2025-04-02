@@ -9,6 +9,7 @@ export default function Navbar() {
   const [session, setSession] = useState<any>(null)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isMentor, setIsMentor] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -22,6 +23,15 @@ export default function Navbar() {
           setSession(null)
         } else {
           setSession(session)
+          // Check if user is a mentor
+          if (session?.user?.id) {
+            const { data: mentorProfile } = await supabase
+              .from('mentors')
+              .select('id')
+              .eq('id', session.user.id)
+              .single()
+            setIsMentor(!!mentorProfile)
+          }
         }
       } catch (err) {
         console.error('Error checking session:', err)
@@ -36,8 +46,18 @@ export default function Navbar() {
     // Listen for auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session)
+      if (session?.user?.id) {
+        const { data: mentorProfile } = await supabase
+          .from('mentors')
+          .select('id')
+          .eq('id', session.user.id)
+          .single()
+        setIsMentor(!!mentorProfile)
+      } else {
+        setIsMentor(false)
+      }
       setIsLoading(false)
     })
 
@@ -105,7 +125,7 @@ export default function Navbar() {
             {session?.user ? (
               <>
                 <Link
-                  href="/dashboard"
+                  href={isMentor ? "/mentor/dashboard" : "/dashboard"}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                 >
                   Dashboard
