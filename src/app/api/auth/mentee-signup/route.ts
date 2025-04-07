@@ -9,7 +9,7 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: Request) {
     try {
-        const { email, password, firstName, lastName } = await request.json()
+        const { email, password } = await request.json()
 
         // Sign up the user with Supabase Auth
         const { data: { user }, error: signUpError } = await supabaseAdmin.auth.signUp({
@@ -17,8 +17,6 @@ export async function POST(request: Request) {
             password,
             options: {
                 data: {
-                    first_name: firstName,
-                    last_name: lastName,
                     role: 'MENTEE'
                 },
                 emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
@@ -48,8 +46,6 @@ export async function POST(request: Request) {
             .insert({
                 id: user.id,
                 email: user.email,
-                first_name: firstName,
-                last_name: lastName,
                 role: 'MENTEE',
                 is_profile_complete: false
             })
