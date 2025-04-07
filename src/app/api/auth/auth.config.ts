@@ -2,18 +2,11 @@ import { NextAuthOptions } from 'next-auth'
 import { User } from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { createClient } from '@supabase/supabase-js'
-
-// Create Supabase client
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { supabase } from '@/lib/supabase'
 
 // Extend built-in types
 declare module 'next-auth' {
     interface User {
-        id: string
         role?: 'MENTOR' | 'MENTEE'
         isProfileComplete?: boolean
     }
@@ -49,7 +42,6 @@ export const authOptions: NextAuthOptions = {
                     throw new Error('Missing credentials')
                 }
 
-                // Sign in with Supabase
                 const { data: { user }, error } = await supabase.auth.signInWithPassword({
                     email: credentials.email,
                     password: credentials.password,
@@ -59,31 +51,28 @@ export const authOptions: NextAuthOptions = {
                     throw new Error(error?.message || 'Invalid credentials')
                 }
 
-                // Get user role and profile status
-                const { data: mentorProfile } = await supabase
+                // Get user role from mentors or mentees table
+                const { data: mentor } = await supabase
                     .from('mentors')
                     .select('*')
                     .eq('id', user.id)
                     .single()
 
-                const { data: menteeProfile } = await supabase
+                const { data: mentee } = await supabase
                     .from('mentees')
                     .select('*')
                     .eq('id', user.id)
                     .single()
 
                 // Determine role and profile completion status
-                const role = mentorProfile ? 'MENTOR' : 'MENTEE'
-                const isProfileComplete = mentorProfile
-                    ? mentorProfile.is_profile_complete
-                    : menteeProfile?.is_profile_complete
+                const role = mentor ? 'MENTOR' : mentee ? 'MENTEE' : undefined
+                const isProfileComplete = mentor?.is_profile_complete || mentee?.is_profile_complete || false
 
                 return {
                     id: user.id,
                     email: user.email,
-                    name: user.user_metadata?.full_name,
                     role,
-                    isProfileComplete,
+                    isProfileComplete
                 }
             }
         })
@@ -111,5 +100,4 @@ export const authOptions: NextAuthOptions = {
         strategy: 'jwt',
         maxAge: 30 * 24 * 60 * 60, // 30 days
     },
-    secret: process.env.NEXTAUTH_SECRET,
 } 
