@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 import AutoLogout from '@/components/AutoLogout'
+import { signOut } from 'next-auth/react'
 
 export default function Dashboard() {
     const router = useRouter()
@@ -131,14 +132,18 @@ export default function Dashboard() {
 
     const handleSignOut = async () => {
         try {
-            setIsSigningOut(true)
-            const { error } = await supabase.auth.signOut()
-            if (error) throw error
-            router.push('/')
+            // Call our custom sign-out API
+            await fetch('/api/auth/signout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+
+            // Then sign out from NextAuth
+            await signOut({ redirect: true, callbackUrl: '/' })
         } catch (error) {
             console.error('Error signing out:', error)
-        } finally {
-            setIsSigningOut(false)
         }
     }
 

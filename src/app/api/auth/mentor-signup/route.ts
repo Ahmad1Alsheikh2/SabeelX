@@ -1,112 +1,105 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
-import dbConnect from '@/lib/mongodb'
-import UserModel from '@/models/User'
+import { supabase, supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json()
-        const { email, password, confirmPassword, firstName, lastName } = body
+        const { email, password, firstName, lastName } = await request.json()
 
-        if (!email || !password || !firstName || !lastName) {
-            return NextResponse.json(
-                { message: 'Missing required fields' },
-                { status: 400 }
-            )
-        }
+        console.log('Starting mentor signup process for:', email)
 
-        if (password.length < 8) {
-            return NextResponse.json(
-                { message: 'Password should be at least 8 characters long' },
-                { status: 400 }
-            )
-        }
-
-        // Check if password and confirmPassword match
-        const passwordsMatch = password === confirmPassword;
-        console.log('Passwords match check:', passwordsMatch);
-
-        if (!passwordsMatch && confirmPassword !== undefined) {
-            console.log('Passwords do not match');
-            return NextResponse.json(
-                { message: 'Passwords do not match' },
-                { status: 400 }
-            )
-        }
-
-        // Connect to database
-        await dbConnect()
-
-        // Check if user already exists
-        const existingUser = await UserModel.findOne({ email })
-
-        if (existingUser) {
-            return NextResponse.json(
-                { message: 'User with this email already exists' },
-                { status: 409 }
-            )
-        }
-
-        // IMPORTANT: Password hashing is now handled by the model's pre-save hook
-        // We should NOT manually hash the password here to avoid double-hashing
-        console.log('Creating new mentor - password will be hashed by schema pre-save hook');
-
-        // Create mentor user with the plain password - schema will hash it
-        let user;
-        try {
-            // Create the user with plain password - let the schema handle hashing
-            user = await UserModel.create({
-                email,
-                password, // Use plain password - model's pre-save hook will hash it
-                firstName,
-                lastName,
-                role: 'MENTOR',
-                skills: [],
-                expertise: [],
-                isProfileComplete: false,
-                passwordMatch: passwordsMatch || false, // Store password match status for debugging
-                signupSource: 'MENTOR_SIGNUP' // Mark as coming from mentor signup
-            });
-            console.log('Mentor created successfully:', {
-                userId: user._id.toString(),
-                passwordMatch: user.passwordMatch
-            });
-        } catch (createError) {
-            console.error('Error creating mentor:', createError);
-            return NextResponse.json(
-                { message: 'Error creating mentor', details: createError.message },
-                { status: 500 }
-            );
-        }
-
-        return NextResponse.json(
-            {
-                message: 'Mentor registered successfully',
-                user: {
-                    id: user._id.toString(),
-                    email: user.email,
-                    firstName: user.firstName,
-                    lastName: user.lastName,
+        // First, create the user with regular client
+        const { data: { user }, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    first_name: firstName,
+                    last_name: lastName,
+                    role: 'MENTOR'
                 },
-            },
-            { status: 201 }
-        )
-    } catch (error: any) {
-        console.error('Mentor registration error:', error)
+                emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
+            }
+        })
 
-        // Check for database connection errors
-        if (error.name === 'MongoServerError' || error.name === 'MongoNetworkError') {
-            console.error('Database connection error:', error)
-            if (error.message.includes('ECONNREFUSED')) {
+        if (signUpError) {
+            console.error('Signup error:', signUpError)
+            return NextResponse.json(
+                { error: signUpError.message },
+                { status: 400 }
+            )
+        }
+
+        if (!user) {
+            console.error('No user returned from signup')
+            return NextResponse.json(
+                { error: 'User creation failed' },
+                { status: 400 }
+            )
+        }
+
+        console.log('User created successfully:', user.id)
+
+        // Wait a moment to ensure the user is fully created
+        await new Promise(resolve => setTimeout(resolve, 2000))
+
+        try {
+            // Create mentor profile using admin client
+            const { data: profileData, error: profileError } = await supabaseAdmin
+                .from('mentors')
+                .insert({
+                    id: user.id,
+                    email: user.email,
+                    first_name: firstName,
+                    last_name: lastName,
+                    role: 'MENTOR',
+                    is_profile_complete: false,
+                    university: '',
+                    bio: '',
+                    hourly_rate: null,
+                    country: '',
+                    years_of_experience: null,
+                    image: '',
+                    expertise: [],
+                    service_categories: []
+                })
+                .select()
+                .single()
+
+            if (profileError) {
+                console.error('Profile creation error details:', {
+                    error: profileError,
+                    user: {
+                        id: user.id,
+                        email: user.email
+                    }
+                })
                 return NextResponse.json(
-                    { message: 'Database connection not configured. Please contact support.' },
-                    { status: 500 }
+                    { error: `Failed to create mentor profile: ${profileError.message}` },
+                    { status: 400 }
                 )
             }
-        }
 
+            console.log('Successfully created mentor profile:', profileData)
+
+            return NextResponse.json({
+                message: 'Mentor account created successfully. Please check your email for verification link.',
+                user: {
+                    id: user.id,
+                    email: user.email
+                },
+                emailSent: true
+            })
+        } catch (profileError: any) {
+            console.error('Profile creation error:', profileError)
+            return NextResponse.json(
+                { error: `Failed to create mentor profile: ${profileError.message}` },
+                { status: 500 }
+            )
+        }
+    } catch (error: any) {
+        console.error('Mentor signup error:', error)
         return NextResponse.json(
-            { message: 'Internal server error', details: error.message },
+            { error: `Internal server error: ${error.message}` },
             { status: 500 }
         )
     }

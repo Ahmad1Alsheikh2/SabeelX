@@ -95,9 +95,16 @@ export const authOptions: NextAuthOptions = {
     },
     pages: {
         signIn: '/auth/signin',
+        signOut: '/',
     },
     session: {
         strategy: 'jwt',
         maxAge: 30 * 24 * 60 * 60, // 30 days
     },
+    events: {
+        async signOut({ token }) {
+            // Clear Supabase session on sign out
+            await supabase.auth.signOut()
+        }
+    }
 } 
