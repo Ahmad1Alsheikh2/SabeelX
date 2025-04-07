@@ -1,90 +1,64 @@
-# SabeelX - Mentorship Platform
+# SabeelX
 
-SabeelX is a modern web platform that connects mentees with experienced mentors across various fields. The platform facilitates meaningful mentorship relationships by providing a seamless way to find, connect with, and learn from industry experts.
-
-## Features
-
-- 🔍 Browse and filter mentors by expertise, price range, and availability
-- 👤 Detailed mentor profiles with experience, education, and reviews
-- 📅 Flexible session scheduling
-- 💬 Direct messaging with mentors
-- ⭐ Review and rating system
-- 🔒 Secure authentication with Google
-- 💰 Simple payment processing
+A platform for connecting mentors and mentees in the education space.
 
 ## Tech Stack
 
-- Next.js 14 with App Router
+- Next.js 14 (App Router)
 - TypeScript
 - Tailwind CSS
-- MongoDB (Database)
-- Mongoose (ODM)
+- Supabase (Authentication & Database)
+- Prisma (ORM)
 - NextAuth.js (Authentication)
 
 ## Getting Started
 
-### Prerequisites
-
-- Node.js 18+ and npm
-- MongoDB database
-- Google OAuth credentials
-
-### Environment Setup
-
-1. Clone the repository:
-```bash
-git clone https://github.com/hamaadwmehal/sabeelx.git
-cd sabeelx
-```
-
+1. Clone the repository
 2. Install dependencies:
-```bash
-npm install
-```
+   ```bash
+   npm install
+   ```
+3. Set up environment variables:
+   ```bash
+   cp .env.example .env.local
+   ```
+4. Update the following environment variables in `.env.local`:
+   - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key
+   - `NEXTAUTH_SECRET`: A random string for NextAuth.js
+   - `NEXTAUTH_URL`: Your application URL (e.g., http://localhost:3000)
+   - `GOOGLE_CLIENT_ID`: Your Google OAuth client ID
+   - `GOOGLE_CLIENT_SECRET`: Your Google OAuth client secret
+   - `DATABASE_URL`: Your Supabase PostgreSQL connection string
 
-3. Create a `.env` file in the root directory with the following variables:
-```env
-MONGODB_URI="mongodb://localhost:27017/sabeelx"
-GOOGLE_CLIENT_ID="your_google_client_id"
-GOOGLE_CLIENT_SECRET="your_google_client_secret"
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your_nextauth_secret"
-```
+5. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-4. Start the development server:
-```bash
-npm run dev
-```
+## Features
 
-The application will be available at `http://localhost:3000`.
+- User authentication (email/password & Google OAuth)
+- Role-based access control (Mentor/Mentee)
+- Profile management
+- Session management
+- Secure password handling
 
 ## Project Structure
 
-```
-sabeelx/
-├── src/
-│   ├── app/                 # Next.js app router pages
-│   ├── components/          # Reusable React components
-│   ├── lib/                 # Utility functions and configurations
-│   ├── models/              # Mongoose data models
-│   └── types/               # TypeScript type definitions
-├── models/                  # Legacy Mongoose models
-├── public/                  # Static assets
-└── package.json            # Project dependencies and scripts
-```
+- `src/app`: Next.js app router pages and API routes
+- `src/components`: Reusable React components
+- `src/lib`: Utility functions and configurations
+- `prisma`: Database schema and migrations
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a new branch
+3. Make your changes
+4. Submit a pull request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-For support, email support@sabeelx.com or join our Slack community.
+MIT
