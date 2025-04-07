@@ -1,49 +1,41 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get('code');
 
     if (code) {
         const supabase = createRouteHandlerClient({ cookies });
+        const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (error) {
+            console.error('Error exchanging code for session:', error);
+            return NextResponse.redirect(
+                `${requestUrl.origin}/auth/signin?error=code_exchange_failed`
+            );
+        }
+
+        if (!user) {
+            return NextResponse.redirect(
+                `${requestUrl.origin}/auth/signin?error=no_user`
+            );
+        }
 
         try {
-            // Exchange the code for a session
-            const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
-            if (sessionError) {
-                console.error('Session exchange error:', sessionError);
-                return NextResponse.redirect(`${requestUrl.origin}/auth/signin?error=session_error`);
-            }
-
-            // Get the user
-            const { data: { user }, error: userError } = await supabase.auth.getUser();
-            if (userError || !user) {
-                console.error('User fetch error:', userError);
-                return NextResponse.redirect(`${requestUrl.origin}/auth/signin?error=user_fetch_error`);
-            }
-
-            // Check if user exists in either mentors or mentees table
-            const { data: mentorProfile, error: mentorError } = await supabase
+            // Check if user already has a profile in either mentors or mentees table
+            const { data: mentorProfile } = await supabase
                 .from('mentors')
                 .select('*')
                 .eq('id', user.id)
                 .single();
 
-            const { data: menteeProfile, error: menteeError } = await supabase
+            const { data: menteeProfile } = await supabase
                 .from('mentees')
                 .select('*')
                 .eq('id', user.id)
                 .single();
-
-            if (mentorError && !mentorError.message.includes('No rows found')) {
-                console.error('Mentor profile check error:', mentorError);
-            }
-            if (menteeError && !menteeError.message.includes('No rows found')) {
-                console.error('Mentee profile check error:', menteeError);
-            }
 
             if (!mentorProfile && !menteeProfile) {
                 // Get the user's role from metadata
@@ -66,7 +58,7 @@ export async function GET(request: NextRequest) {
                         first_name: user.user_metadata?.first_name || '',
                         last_name: user.user_metadata?.last_name || '',
                         is_profile_complete: false,
-                        role: role // Add role to the profile
+                        role: role
                     });
 
                 if (insertError) {
@@ -91,23 +83,21 @@ export async function GET(request: NextRequest) {
 
             if (profile.is_profile_complete) {
                 return NextResponse.redirect(
-                    role === 'MENTOR'
-                        ? `${requestUrl.origin}/mentor/dashboard`
-                        : `${requestUrl.origin}/dashboard`
+                    `${requestUrl.origin}/${isMentor ? 'mentor' : ''}/dashboard`
                 );
             } else {
                 return NextResponse.redirect(
-                    role === 'MENTOR'
-                        ? `${requestUrl.origin}/mentor/profile-setup`
-                        : `${requestUrl.origin}/profile/setup`
+                    `${requestUrl.origin}/${isMentor ? 'mentor' : ''}/profile-setup`
                 );
             }
         } catch (error) {
-            console.error('Unexpected error in callback:', error);
-            return NextResponse.redirect(`${requestUrl.origin}/auth/signin?error=callback_error`);
+            console.error('Error in callback route:', error);
+            return NextResponse.redirect(
+                `${requestUrl.origin}/auth/signin?error=callback_error`
+            );
         }
     }
 
-    // Something went wrong, redirect to sign in
-    return NextResponse.redirect(`${requestUrl.origin}/auth/signin?error=callback_failed`);
+    // Return to sign-in page if no code is present
+    return NextResponse.redirect(`${requestUrl.origin}/auth/signin`);
 } 

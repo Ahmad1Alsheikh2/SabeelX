@@ -3,20 +3,17 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 
 export default function SignUp() {
   const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [userType, setUserType] = useState<'MENTOR' | 'MENTEE'>('MENTEE')
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'MENTOR' | 'MENTEE'>('MENTEE')
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    firstName: '',
-    lastName: '',
-  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [passwordRequirements, setPasswordRequirements] = useState({
@@ -24,87 +21,62 @@ export default function SignUp() {
     hasUpperCase: false,
     hasLowerCase: false,
     hasNumbers: false,
+    passwordsMatch: false,
   })
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
 
   useEffect(() => {
-    const password = formData.password
     setPasswordRequirements({
       minLength: password.length >= 8,
       hasUpperCase: /[A-Z]/.test(password),
       hasLowerCase: /[a-z]/.test(password),
       hasNumbers: /\d/.test(password),
+      passwordsMatch: password === confirmPassword && password !== '',
     })
-  }, [formData.password])
+  }, [password, confirmPassword])
 
   const validatePassword = () => {
     return Object.values(passwordRequirements).every(Boolean) &&
-      formData.password === formData.confirmPassword
+      password === confirmPassword
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
     setError('')
-    setLoading(true)
-    setShowSuccessMessage(false)
+
+    if (!validatePassword()) {
+      setError('Please ensure all password requirements are met and passwords match')
+      setIsSubmitting(false)
+      return
+    }
 
     try {
-      if (!validatePassword()) {
-        setError('Please ensure all password requirements are met and passwords match')
-        setLoading(false)
-        return
-      }
-
-      // Check if user exists in either table
-      const { data: existingMentor } = await supabase
-        .from('mentors')
-        .select('email')
-        .eq('email', formData.email)
-        .single()
-
-      const { data: existingMentee } = await supabase
-        .from('mentees')
-        .select('email')
-        .eq('email', formData.email)
-        .single()
-
-      if (existingMentor || existingMentee) {
-        throw new Error('An account with this email already exists. Please sign in instead.')
-      }
-
-      // First, sign up with Supabase Auth
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            role: activeTab
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
+      const response = await fetch(`/api/auth/${userType.toLowerCase()}-signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          firstName,
+          lastName,
+        }),
       })
 
-      if (signUpError) {
-        console.error('Signup error:', signUpError)
-        if (signUpError.message.includes('User already registered')) {
-          throw new Error('An account with this email already exists. Please sign in instead.')
-        }
-        throw new Error(signUpError.message)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Signup failed')
       }
 
-      if (!authData.user) {
-        throw new Error('No user data returned after signup')
-      }
-
-      // Show success message
-      setShowSuccessMessage(true)
-    } catch (err) {
-      console.error('Error in signup:', err)
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred during signup. Please try again.')
+      // Show success message and redirect to signin
+      alert(data.message)
+      router.push('/auth/signin')
+    } catch (err: any) {
+      setError(err.message)
     } finally {
-      setLoading(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -127,10 +99,10 @@ export default function SignUp() {
           <div className="border-b border-gray-200 mb-6">
             <nav className="-mb-px flex justify-center space-x-8" aria-label="Tabs">
               <button
-                onClick={() => setActiveTab('MENTEE')}
+                onClick={() => setUserType('MENTEE')}
                 className={`
                   whitespace-nowrap py-4 px-4 border-b-2 font-medium text-sm
-                  ${activeTab === 'MENTEE'
+                  ${userType === 'MENTEE'
                     ? 'border-green-500 text-green-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }
@@ -139,10 +111,10 @@ export default function SignUp() {
                 I want to be a Mentee
               </button>
               <button
-                onClick={() => setActiveTab('MENTOR')}
+                onClick={() => setUserType('MENTOR')}
                 className={`
                   whitespace-nowrap py-4 px-4 border-b-2 font-medium text-sm
-                  ${activeTab === 'MENTOR'
+                  ${userType === 'MENTOR'
                     ? 'border-indigo-500 text-indigo-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }
@@ -156,7 +128,7 @@ export default function SignUp() {
           {/* Role Description */}
           <div className="mb-6">
             <p className="text-sm text-gray-600">
-              {activeTab === 'MENTEE' ? (
+              {userType === 'MENTEE' ? (
                 'As a mentee, you can connect with experienced mentors who will guide you in your learning journey.'
               ) : (
                 'As a mentor, you can share your expertise and help others grow in their careers.'
@@ -176,8 +148,8 @@ export default function SignUp() {
                   type="text"
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
                 />
               </div>
             </div>
@@ -193,8 +165,8 @@ export default function SignUp() {
                   type="text"
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
                 />
               </div>
             </div>
@@ -211,8 +183,8 @@ export default function SignUp() {
                   autoComplete="email"
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
             </div>
@@ -228,8 +200,8 @@ export default function SignUp() {
                   type={showPassword ? 'text' : 'password'}
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <button
                   type="button"
@@ -254,6 +226,9 @@ export default function SignUp() {
                   <li className={passwordRequirements.hasNumbers ? 'text-green-600' : 'text-gray-400'}>
                     At least one number
                   </li>
+                  <li className={passwordRequirements.passwordsMatch ? 'text-green-600' : 'text-gray-400'}>
+                    Passwords match
+                  </li>
                 </ul>
               </div>
             </div>
@@ -269,8 +244,8 @@ export default function SignUp() {
                   type={showConfirmPassword ? 'text' : 'password'}
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                 />
                 <button
                   type="button"
@@ -291,13 +266,13 @@ export default function SignUp() {
             <div>
               <button
                 type="submit"
-                disabled={loading}
-                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${activeTab === 'MENTOR'
+                disabled={isSubmitting}
+                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${userType === 'MENTOR'
                   ? 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500'
                   : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
                   }`}
               >
-                {loading ? 'Creating account...' : `Create ${activeTab === 'MENTOR' ? 'Mentor' : 'Mentee'} account`}
+                {isSubmitting ? 'Creating account...' : `Create ${userType === 'MENTOR' ? 'Mentor' : 'Mentee'} account`}
               </button>
             </div>
           </form>
@@ -310,18 +285,6 @@ export default function SignUp() {
               </Link>
             </p>
           </div>
-
-          {showSuccessMessage && (
-            <div className="mt-4 rounded-md bg-green-50 p-4">
-              <div className="flex">
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-green-800">
-                    A verification link has been sent to your email address. Please check your inbox and click the link to verify your account.
-                  </h3>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
