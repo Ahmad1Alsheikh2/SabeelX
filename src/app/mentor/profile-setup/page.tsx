@@ -160,7 +160,8 @@ export default function MentorProfileSetup() {
                         country: formData.country,
                         years_of_experience: Number(formData.years_of_experience),
                         image: formData.image,
-                        is_profile_complete: true
+                        is_profile_complete: true,
+                        role: 'MENTOR'
                     })
 
                 if (insertError) {
