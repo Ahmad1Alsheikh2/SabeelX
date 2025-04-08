@@ -5,24 +5,32 @@ import bcrypt from 'bcryptjs'
 import prisma from './prisma'
 
 declare module 'next-auth' {
+    interface User {
+        id: string
+        email?: string | null
+        name?: string | null
+        image?: string | null
+        role?: 'MENTOR' | 'MENTEE'
+        isProfileComplete?: boolean
+        subscribed?: boolean
+        firstName?: string
+        lastName?: string
+    }
     interface Session {
-        user: {
-            id: string
-            email?: string | null
-            name?: string | null
-            image?: string | null
-            role?: string
+        user: User & {
+            role?: 'MENTOR' | 'MENTEE'
             isProfileComplete?: boolean
-            subscribed?: boolean
         }
     }
 }
 
 declare module 'next-auth/jwt' {
     interface JWT {
-        role?: string
+        role?: 'MENTOR' | 'MENTEE'
         isProfileComplete?: boolean
         subscribed?: boolean
+        firstName?: string
+        lastName?: string
     }
 }
 
@@ -72,14 +80,14 @@ export const authOptions: NextAuthOptions = {
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID || '',
             clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-            profile(profile) {
+            profile: (profile: any) => {
                 return {
-                    id: profile.sub,
+                    id: profile.id,
                     email: profile.email,
-                    firstName: profile.given_name,
-                    lastName: profile.family_name,
-                    image: profile.picture,
-                    role: 'USER',
+                    firstName: profile.firstName,
+                    lastName: profile.lastName,
+                    image: profile.image,
+                    role: 'MENTEE' as const,
                     isProfileComplete: false,
                     subscribed: false
                 }
