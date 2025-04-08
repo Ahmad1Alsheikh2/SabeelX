@@ -6,57 +6,36 @@ import { authOptions } from '@/lib/auth'
 export async function POST(request: NextRequest) {
     try {
         const session = await getServerSession(authOptions)
-
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: 'Unauthorized - No session found' }, { status: 401 })
+        if (!session || session.user.role !== 'MENTOR') {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Check if user is a mentor
-        const user = await prisma.user.findUnique({
-            where: { id: session.user.id },
-            select: { role: true }
-        })
+        const body = await request.json()
+        const { availabilities } = body
 
-        if (!user || user.role !== 'MENTOR') {
-            return NextResponse.json({ error: 'Unauthorized - Must be a mentor' }, { status: 401 })
+        if (!Array.isArray(availabilities)) {
+            return NextResponse.json({ error: 'Invalid request format' }, { status: 400 })
         }
 
-        // First, delete all existing availability slots
-        await prisma.mentorAvailability.deleteMany({
-            where: {
-                mentorId: session.user.id
-            }
-        })
+        const createdAvailabilities = await Promise.all(
+            availabilities.map(async (availability) => {
+                const { dayOfWeek, startTime, endTime, timeZone } = availability
+                return prisma.mentorAvailability.create({
+                    data: {
+                        mentorId: session.user.id,
+                        dayOfWeek,
+                        startTime,
+                        endTime,
+                        timeZone
+                    }
+                })
+            })
+        )
 
-        const slots = [
-            // Monday-Friday morning slots (7-8 AM)
-            ...[1, 2, 3, 4, 5].map(day => ({ dayOfWeek: day, startTime: '07:00', endTime: '08:00' })),
-
-            // Monday-Friday evening slots (7-10 PM)
-            ...[1, 2, 3, 4, 5].map(day => ({ dayOfWeek: day, startTime: '19:00', endTime: '22:00' })),
-
-            // Weekend slots (7 AM - 5 PM)
-            ...[0, 6].map(day => ({ dayOfWeek: day, startTime: '07:00', endTime: '17:00' }))
-        ].map(slot => ({
-            ...slot,
-            timeZone: 'America/New_York',
-            mentorId: session.user.id
-        }))
-
-        // Create all new availability slots
-        const createdSlots = await prisma.mentorAvailability.createMany({
-            data: slots
-        })
-
-        return NextResponse.json({
-            message: 'Availability slots updated successfully',
-            created: createdSlots.count
-        })
+        return NextResponse.json(createdAvailabilities)
     } catch (error) {
-        console.error('Error updating availability slots:', error)
-        return NextResponse.json({
-            error: 'Internal server error',
-            details: error.message
-        }, { status: 500 })
+        console.error('Error creating batch availability:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Failed to create batch availability'
+        return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 } 

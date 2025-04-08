@@ -12,38 +12,43 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json()
-        const { startTime, endTime, timeZone } = body
+        const { mentorId, startTime, endTime, date } = body
 
-        if (!startTime || !endTime || !timeZone) {
+        if (!mentorId || !startTime || !endTime || !date) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
         }
 
-        // Validate the times
-        const startDateTime = DateTime.fromISO(startTime)
-        const endDateTime = DateTime.fromISO(endTime)
+        // Check if the time slot is available
+        const existingBooking = await prisma.booking.findFirst({
+            where: {
+                mentorId,
+                date,
+                startTime,
+                endTime
+            }
+        })
 
-        if (!startDateTime.isValid || !endDateTime.isValid) {
-            return NextResponse.json({ error: 'Invalid date format' }, { status: 400 })
+        if (existingBooking) {
+            return NextResponse.json({ error: 'Time slot is already booked' }, { status: 400 })
         }
 
         // Create the booking
         const booking = await prisma.booking.create({
             data: {
+                mentorId,
                 menteeId: session.user.id,
-                startTime: startDateTime.toJSDate(),
-                endTime: endDateTime.toJSDate(),
-                timeZone,
-                status: 'PENDING',
-                type: 'CONSULTATION'
+                date,
+                startTime,
+                endTime,
+                status: 'PENDING'
             }
         })
 
         return NextResponse.json(booking)
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error creating booking:', error)
-        return NextResponse.json({
-            error: error.message || 'Internal server error'
-        }, { status: 500 })
+        const errorMessage = error instanceof Error ? error.message : 'Failed to create booking'
+        return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 }
 
@@ -55,34 +60,25 @@ export async function GET(request: NextRequest) {
         }
 
         const searchParams = request.nextUrl.searchParams
-        const role = searchParams.get('role') // 'mentor' or 'mentee'
+        const mentorId = searchParams.get('mentorId')
+        const date = searchParams.get('date')
+
+        if (!mentorId || !date) {
+            return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 })
+        }
 
         const bookings = await prisma.booking.findMany({
-            where: role === 'mentor'
-                ? { mentorId: session.user.id }
-                : { menteeId: session.user.id },
-            include: {
-                mentor: {
-                    select: {
-                        firstName: true,
-                        lastName: true,
-                        email: true
-                    }
-                },
-                mentee: {
-                    select: {
-                        firstName: true,
-                        lastName: true,
-                        email: true
-                    }
-                }
+            where: {
+                mentorId,
+                date
             }
         })
 
         return NextResponse.json(bookings)
     } catch (error) {
         console.error('Error fetching bookings:', error)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch bookings'
+        return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 }
 

@@ -52,15 +52,15 @@ export async function GET(request: NextRequest) {
             // For non-weekend days, return empty array
             return NextResponse.json([])
 
-        } catch (err: any) {
-            console.error('Error processing date:', err)
-            return NextResponse.json({ error: err.message }, { status: 400 })
+        } catch (error) {
+            console.error('Error processing date:', error)
+            const errorMessage = error instanceof Error ? error.message : 'Invalid date format'
+            return NextResponse.json({ error: errorMessage }, { status: 400 })
         }
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error fetching availability:', error)
-        return NextResponse.json({
-            error: error.message || 'Internal server error'
-        }, { status: 500 })
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch availability'
+        return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 }
 
@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(availability)
     } catch (error) {
         console.error('Error creating availability:', error)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+        const errorMessage = error instanceof Error ? error.message : 'Failed to create availability'
+        return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 } 
