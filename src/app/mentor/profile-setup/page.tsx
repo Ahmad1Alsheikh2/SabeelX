@@ -170,8 +170,8 @@ export default function MentorProfileSetup() {
                 }
                 console.log('Successfully created new mentor profile')
             } else {
-                // Update mentor profile
-                console.log('Updating mentor profile with data:', {
+                // Update existing mentor profile
+                console.log('Updating existing mentor profile with data:', {
                     university: formData.university,
                     expertise: formData.focusAreas,
                     bio: formData.bio,
@@ -200,9 +200,10 @@ export default function MentorProfileSetup() {
                     console.error('Error updating profile:', updateError)
                     throw new Error(`Failed to update profile: ${updateError.message}`)
                 }
+                console.log('Successfully updated existing mentor profile')
             }
 
-            console.log('Successfully updated mentor profile, redirecting to dashboard')
+            console.log('Profile operation successful, redirecting to dashboard')
             // Redirect to mentor dashboard
             router.replace('/mentor/dashboard')
         } catch (err) {
