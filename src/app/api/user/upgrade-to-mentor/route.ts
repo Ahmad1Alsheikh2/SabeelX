@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { supabase } from '@/app/api/auth/auth.config'
-import { authOptions } from '@/app/api/auth/auth.config'
+import { createClient } from '@supabase/supabase-js'
+import { authOptions } from '@/lib/auth'
+
+// Create Supabase client
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(request: NextRequest) {
     try {
@@ -59,10 +65,10 @@ export async function POST(request: NextRequest) {
             message: 'Successfully upgraded to mentor',
             userId
         })
-    } catch (error) {
+    } catch (error: any) {
         console.error('Upgrade to mentor error:', error)
         return NextResponse.json(
-            { error: 'Internal server error' },
+            { error: 'An error occurred while upgrading to mentor' },
             { status: 500 }
         )
     }
