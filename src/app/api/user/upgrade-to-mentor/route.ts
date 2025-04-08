@@ -65,10 +65,11 @@ export async function POST(request: NextRequest) {
             message: 'Successfully upgraded to mentor',
             userId
         })
-    } catch (error: any) {
+    } catch (error) {
         console.error('Upgrade to mentor error:', error)
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
         return NextResponse.json(
-            { error: 'An error occurred while upgrading to mentor' },
+            { error: `An error occurred while upgrading to mentor: ${errorMessage}` },
             { status: 500 }
         )
     }
