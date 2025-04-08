@@ -48,9 +48,13 @@ export default function UpdateAvailability() {
             setTimeout(() => {
                 router.push('/mentor/dashboard')
             }, 2000)
-        } catch (err) {
-            console.error('Error updating availability:', err)
-            setError(err.message || 'An unexpected error occurred')
+        } catch (error) {
+            console.error('Error updating availability:', error)
+            if (error instanceof Error) {
+                setError(error.message)
+            } else {
+                setError('An unexpected error occurred')
+            }
             setStatus('error')
         }
     }
