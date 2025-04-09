@@ -53,7 +53,7 @@ export default function SchedulePage() {
           `)
           .gte('start_time', startDateTime.toISO())
           .lte('end_time', endDateTime.toISO())
-          .not('id', 'in', (sub) => {
+          .not('id', 'in', (sub: any) => {
             return sub
               .from('bookings')
               .select('availability_id')
