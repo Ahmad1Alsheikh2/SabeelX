@@ -10,22 +10,23 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 declare module 'next-auth' {
+    interface User {
+        id: string
+        email?: string | null
+        name?: string | null
+        image?: string | null
+        role?: 'MENTOR' | 'MENTEE'
+        isProfileComplete?: boolean
+    }
     interface Session {
-        user: {
-            id: string;
-            email?: string | null;
-            name?: string | null;
-            image?: string | null;
-            role?: string;
-            isProfileComplete?: boolean;
-        }
+        user: User
     }
 }
 
 declare module 'next-auth/jwt' {
     interface JWT {
-        role?: string;
-        isProfileComplete?: boolean;
+        role?: 'MENTOR' | 'MENTEE'
+        isProfileComplete?: boolean
     }
 }
 
